@@ -1,0 +1,12 @@
+{
+  "name": "gamenight-ctf",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm run dev --prefix backend & npm run dev --prefix frontend & npm run dev --prefix admin",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:admin": "npm run dev --prefix admin",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix admin"
+  }
+}
