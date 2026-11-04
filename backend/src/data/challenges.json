@@ -1,0 +1,396 @@
+{
+  "RELEASE_WAVES": [
+    {
+      "at": 0,
+      "ids": [
+        "osint-2",
+        "crypto-1"
+      ],
+      "label": "Açılış · 3 kolay"
+    },
+    {
+      "at": 15,
+      "ids": [
+        "osint-5",
+        "osint-6",
+        "crypto-5"
+      ],
+      "label": "15. dk · 3 orta"
+    },
+    {
+      "at": 45,
+      "ids": [
+        "osint-9"
+      ],
+      "label": "45. dk · 1 zor"
+    },
+    {
+      "at": 60,
+      "ids": [
+        "osint-3",
+        "crypto-2",
+        "crypto-3"
+      ],
+      "label": "1. saat · 3 kolay"
+    },
+    {
+      "at": 75,
+      "ids": [
+        "osint-7",
+        "crypto-6",
+        "crypto-7"
+      ],
+      "label": "75. dk · 3 orta"
+    },
+    {
+      "at": 105,
+      "ids": [
+        "crypto-10"
+      ],
+      "label": "105. dk · 1 zor"
+    },
+    {
+      "at": 120,
+      "ids": [
+        "osint-4",
+        "crypto-4"
+      ],
+      "label": "2. saat · 2 kolay"
+    },
+    {
+      "at": 135,
+      "ids": [
+        "osint-8",
+        "crypto-8",
+        "crypto-9"
+      ],
+      "label": "135. dk · 3 orta"
+    },
+    {
+      "at": 150,
+      "ids": [
+        "osint-10",
+        "crypto-11"
+      ],
+      "label": "150. dk · 2 zor"
+    },
+    {
+      "at": 165,
+      "ids": [
+        "osint-11",
+        "crypto-12"
+      ],
+      "label": "165. dk · 2 zor"
+    }
+  ],
+  "CHALLENGES": [
+    {
+      "id": "osint-2",
+      "category": "osint",
+      "title": "Satır Başları",
+      "points": 100,
+      "minutes": 12,
+      "difficulty": "Kolay",
+      "icon": "FileText",
+      "description": "Kısa bir duyurunun her satırı bir harf saklıyor.",
+      "story": "Mahalle panosundaki duyuru beş satır. Bayrak, satırların ilk harfleridir. Hepsini küçük yaz.\n\nSis kalktı\nİz sürülür\nYol uzar\nAyna kırık\nHava soğuk",
+      "hint": "Beş satır, beş harf. Baştan sona birleştir.",
+      "flag": "CTF{siyah}",
+      "unlockAt": 0
+    },
+    {
+      "id": "osint-3",
+      "category": "osint",
+      "title": "Gece Seferi",
+      "points": 120,
+      "minutes": 12,
+      "difficulty": "Kolay",
+      "icon": "Route",
+      "description": "Otobüs çizelgesinde yalnızca gece seferinin kapı kodu lazım.",
+      "story": "Duraktaki çizelge:\n\nSabah 07:10  kapı kodu: gun_01\nÖğle 12:40   kapı kodu: tas_04\nGece 23:15   kapı kodu: kapi_09\nSon 00:05    kapı kodu: son_02\n\nNot: Bayrak, saati 23:15 olan seferin kapı kodudur.",
+      "hint": "Gece satırındaki kodu CTF{ } içine al.",
+      "flag": "CTF{kapi_09}",
+      "unlockAt": 60
+    },
+    {
+      "id": "osint-4",
+      "category": "osint",
+      "title": "Raf Etiketi",
+      "points": 120,
+      "minutes": 15,
+      "difficulty": "Kolay",
+      "icon": "Library",
+      "description": "Kütüphane etiketinde sayıları atlayıp kelimeleri birleştir.",
+      "story": "Eski raf etiketi şöyle dizilmiş:\n\nRAF: gece / 14 / kutu / 7 / yedi\n\nKural: Yalnızca harften oluşan parçaları soldan sağa al. Sayıları ve rakamla başlayan parçaları at. Kalanları alt çizgi ile birleştir.",
+      "hint": "Rakamları at. Kalan kelimeleri soldan sağa alt çizgi ile birleştir.",
+      "flag": "CTF{gece_kutu_yedi}",
+      "unlockAt": 120
+    },
+    {
+      "id": "osint-5",
+      "category": "osint",
+      "title": "Kayıp Kartpostal",
+      "points": 200,
+      "minutes": 18,
+      "difficulty": "Orta",
+      "icon": "MapPinned",
+      "description": "Eski bir kartpostaldaki üç parçayı doğru sırayla birleştir.",
+      "story": "Arşivden çıkan kartpostalın arkası:\n\nSatır A — Pulun üstü: IZMIR\nSatır B — İmza: Kedi\nSatır C — Köşeye çizilmiş işaret: _\n\nKenar notu: Harfleri küçült. Sıra pul, işaret, imza. Dışına CTF{ } ekle.",
+      "hint": "Önce şehir, sonra alt çizgi, sonra rumuz.",
+      "flag": "CTF{izmir_kedi}",
+      "unlockAt": 15
+    },
+    {
+      "id": "osint-6",
+      "category": "osint",
+      "title": "Menü Fişi",
+      "points": 220,
+      "minutes": 20,
+      "difficulty": "Orta",
+      "icon": "Receipt",
+      "description": "Fişteki en pahalı tatlı ile en ucuz içeceği yan yana getir.",
+      "story": "Kafe fişi:\n\nçay        içecek   15\nsu         içecek   10\nayran      içecek   18\nkek        tatlı    40\nbaklava    tatlı    70\nkurabiye   tatlı    35\n\nKural: En pahalı tatlının adı, alt çizgi, en ucuz içeceğin adı. Küçük harf.",
+      "hint": "Tatlılar kendi arasında, içecekler kendi arasında kıyaslanır.",
+      "flag": "CTF{baklava_su}",
+      "unlockAt": 15
+    },
+    {
+      "id": "osint-7",
+      "category": "osint",
+      "title": "Üç Yapışkan",
+      "points": 250,
+      "minutes": 25,
+      "difficulty": "Orta",
+      "icon": "StickyNote",
+      "description": "Üç notun belirli kelimeleri bir parola oluşturuyor.",
+      "story": "Monitörün kenarında üç yapışkan var. Kapaktaki kural:\n\"1. notun 2. kelimesi + 2. notun 1. kelimesi + 3. notun son kelimesi.\"\n\nNot 1: lamba gece yanar\nNot 2: kedi camda bekler\nNot 3: iz sür teras\n\nKelimelerin arasına alt çizgi koy.",
+      "hint": "Her nottan kuralın söylediği tek kelimeyi al. Sıra 1, 2, 3.",
+      "flag": "CTF{gece_kedi_teras}",
+      "unlockAt": 75
+    },
+    {
+      "id": "osint-8",
+      "category": "osint",
+      "title": "Arşiv Sırası",
+      "points": 280,
+      "minutes": 25,
+      "difficulty": "Orta",
+      "icon": "FolderOpen",
+      "description": "Dosya adları 1-2-3 diye gider. Okuma sırası başka.",
+      "story": "Açık klasör:\n\nparca1.txt  →  sol\nparca2.txt  →  gunes\nparca3.txt  →  saat\nOKU.txt     →  Sıra: 3, sonra 1, sonra 2. Alt çizgi ile birleştir.\n\nBayrak, bu okuma sırasının sonucudur.",
+      "hint": "OKU.txt içindeki sıra, dosya adındaki numaradan farklı.",
+      "flag": "CTF{saat_sol_gunes}",
+      "unlockAt": 135
+    },
+    {
+      "id": "osint-9",
+      "category": "osint",
+      "title": "Tarih Sırası",
+      "points": 350,
+      "minutes": 35,
+      "difficulty": "Zor",
+      "icon": "Calendar",
+      "description": "Üç eski gönderiyi tarihe göre diz, sonra istenen alanları seç.",
+      "story": "Üç kamu gönderisi:\n\n07 Ocak — eşya: anahtar, renk: siyah, şehir: izmir\n19 Mart — eşya: harita, renk: mavi, şehir: ankara\n02 Şubat — eşya: pusula, renk: gri, şehir: bursa\n\nSabitlenmiş kural, en altta:\nEn yeni gönderinin şehir alanı, en eskinin eşya alanı, ortadakinin renk alanı.\nKüçük harf. Aralara alt çizgi.",
+      "hint": "En yeni Mart, en eski Ocak, ortadaki Şubat.",
+      "flag": "CTF{ankara_anahtar_gri}",
+      "unlockAt": 45
+    },
+    {
+      "id": "osint-10",
+      "category": "osint",
+      "title": "Ters Devriye",
+      "points": 400,
+      "minutes": 35,
+      "difficulty": "Zor",
+      "icon": "Route",
+      "description": "Rota soldan sağa yazılmış. Devriye ters yönde yürümüş.",
+      "story": "Sözlük:\nK1 = liman\nK2 = tepe\nK3 = kopru\n\nDuvar yazısı: K1 → K2 → K3\n\nDipnot: Devriye ters yönde yürür. Yürüdüğü yer adlarını alt çizgi ile birleştir.",
+      "hint": "Sıra K3, K2, K1 olur.",
+      "flag": "CTF{kopru_tepe_liman}",
+      "unlockAt": 150
+    },
+    {
+      "id": "osint-11",
+      "category": "osint",
+      "title": "Satır Avı",
+      "points": 450,
+      "minutes": 40,
+      "difficulty": "Zor",
+      "icon": "ListOrdered",
+      "description": "On iki satırlık notta yalnızca belirli satırların ilk kelimesi sayılır.",
+      "story": "Numara yazılmamış. Satırları kendin say. Kural: numarası 3'ün katı olan satırların İLK kelimesini al. Küçük harf, alt çizgi ile birleştir.\n\nSis limanı örttü.\nLamba hâlâ sıcaktı.\nGece vardiyası başladı.\nEski kapı aralıktı.\nRüzgar tabelayı dövdü.\nKapi kodu defterde yok.\nCam buğusu silindi.\nIzgara soğumuştu.\nIz taşların arasındaydı.\nMor ışık yandı.\nSon otobüs kaçtı.\nSon satır bilerek tekrar.",
+      "hint": "3'ün katı olan satırlar. Numara yok; ilk satır 1 kabul edilir. Her birinin ilk kelimesini al.",
+      "flag": "CTF{gece_kapi_iz_son}",
+      "unlockAt": 165
+    },
+    {
+      "id": "crypto-1",
+      "category": "crypto",
+      "title": "On Üç Adım",
+      "points": 100,
+      "minutes": 12,
+      "difficulty": "Kolay",
+      "icon": "KeyRound",
+      "description": "Her harf alfabede 13 adım kaymış. Kaydırmayı geri al.",
+      "story": "Ele geçen şerit:\n\nCTF{ebg13_xbynl}\n\nHer harf 13 adım ileri gitmiş. Bu yöntemin adı ROT13. Rakam, alt çizgi ve parantez yerinde kalır.\n\nÖrnek: N harfi 13 adım geri gelince A olur. Aynı kaydırma ikinci kez uygulanınca metin eski haline döner.",
+      "hint": "Parantezin içindeki harflere bir kez daha ROT13 uygula.",
+      "flag": "CTF{rot13_kolay}",
+      "unlockAt": 0
+    },
+    {
+      "id": "crypto-2",
+      "category": "crypto",
+      "title": "Ters Şerit",
+      "points": 100,
+      "minutes": 10,
+      "difficulty": "Kolay",
+      "icon": "Undo2",
+      "description": "Şerit sondan başa yazılmış. Tamamını çevir.",
+      "story": "Kameraya ters düşmüş bir şerit:\n\n}izay_sret{FTC\n\nTüm satırı soldan sağa düz çevir. Çıkan metin bayrağın kendisidir.",
+      "hint": "Son karakter yeni ilk karakter olsun. Parantezler de döner.",
+      "flag": "CTF{ters_yazi}",
+      "unlockAt": 60
+    },
+    {
+      "id": "crypto-3",
+      "category": "crypto",
+      "title": "Üç Kutu",
+      "points": 150,
+      "minutes": 15,
+      "difficulty": "Kolay",
+      "icon": "Type",
+      "description": "Her harf alfabede 3 adım ileri kaymış.",
+      "story": "Kutu kapağında şu yazıyor:\n\nCTF{vhcdu_xf}\n\nNot: Sezar kaydırması, artı 3. Çözerken her harfi 3 adım geri al. a, b, c sırasını kullan. Rakam yok. Alt çizgi yerinde kalır.\n\nÖrnek: d harfi 3 geri gelince a olur.",
+      "hint": "v→s, h→e diye devam et. Parantezin içi küçük harftir.",
+      "flag": "CTF{sezar_uc}",
+      "unlockAt": 60
+    },
+    {
+      "id": "crypto-4",
+      "category": "crypto",
+      "title": "Gizli Mektup",
+      "points": 150,
+      "minutes": 15,
+      "difficulty": "Kolay",
+      "icon": "Binary",
+      "description": "Mektup Base64 ile kodlanmış. Çözünce bayrağın tamamı çıkar.",
+      "story": "Zarfta tek satır:\n\nQ1RGe2dpemxpX21la3R1cH0=\n\nBu bir Base64 metnidir. Base64, yazıyı harf ve rakamlardan oluşan bir koda çevirir. Çözülen metin bayrağın tamamıdır.\n\nKontrol: Doğru çözüm CTF{ ile başlar.",
+      "hint": "Satırı bir Base64 çözücüye yapıştır. Çıktıyı olduğu gibi gönder.",
+      "flag": "CTF{gizli_mektup}",
+      "unlockAt": 120
+    },
+    {
+      "id": "crypto-5",
+      "category": "crypto",
+      "title": "Onaltılık Izgara",
+      "points": 200,
+      "minutes": 20,
+      "difficulty": "Orta",
+      "icon": "Hash",
+      "description": "Her bayt iki onaltılık karakter. Boşluklar yalnızca okuma kolaylığı.",
+      "story": "Izgaradaki kod:\n\n43 54 46 7b 68 65 78 5f 69 73 69 6b 7d\n\nHer çift, bir ASCII karakterin hex karşılığıdır. Boşlukları silip çöz. Çıktı bayrağın tamamıdır.\n\nBaşlangıç: 43 = C, 54 = T, 46 = F.",
+      "hint": "7b süslü parantez açar, 7d kapatır, 5f alt çizgidir.",
+      "flag": "CTF{hex_isik}",
+      "unlockAt": 15
+    },
+    {
+      "id": "crypto-6",
+      "category": "crypto",
+      "title": "Kısa Sinyal",
+      "points": 250,
+      "minutes": 35,
+      "difficulty": "Orta",
+      "icon": "Newspaper",
+      "description": "Nokta ve çizgiler harfe dönüşür. Eğik çizgi alt çizgidir.",
+      "story": "Telsiz kaydı:\n\n-- --- .-. ... . / --. . -.-. .\n\nHarfler boşlukla ayrılır. / işareti alt çizgidir. Çözülen kelimeyi CTF{ } içine yaz.\n\nAlfabe:\nA .-     B -...   C -.-.   D -..\nE .      F ..-.   G --.    H ....\nI ..     J .---   K -.-    L .-..\nM --     N -.     O ---    P .--.\nQ --.-   R .-.    S ...    T -\nU ..-    V ...-   W .--    X -..-\nY -.--   Z --..",
+      "hint": "İlk beş işaret morse kelimesini verir. Çizgiden sonraki dört harf ikinci kelimedir.",
+      "flag": "CTF{morse_gece}",
+      "unlockAt": 75
+    },
+    {
+      "id": "crypto-7",
+      "category": "crypto",
+      "title": "Ters Alfabe",
+      "points": 220,
+      "minutes": 25,
+      "difficulty": "Orta",
+      "icon": "Type",
+      "description": "A ile Z yer değiştirmiş. Bu yöntemin adı Atbash.",
+      "story": "Ayna notu:\n\nCTF{zgyzhs_tvxv}\n\nAtbash'ta a=z, b=y, c=x diye devam eder. Aynı işlem geri dönüştür. Alt çizgi ve parantez durur.\n\nÖrnek: z harfi a olur.",
+      "hint": "İçerideki ilk harf z ise düz metinde a'dır.",
+      "flag": "CTF{atbash_gece}",
+      "unlockAt": 75
+    },
+    {
+      "id": "crypto-8",
+      "category": "crypto",
+      "title": "Sekiz Bit",
+      "points": 280,
+      "minutes": 30,
+      "difficulty": "Orta",
+      "icon": "Binary",
+      "description": "Her sekiz bit bir karakter. Gruplar zaten ayrılmış.",
+      "story": "Şerit:\n\n01000011 01010100 01000110 01111011 01100010 01101001 01110100 01011111 01101001 01111010 01101001 01111101\n\nHer grup bir ASCII karakterdir. Hepsini sırayla çevir. Çıktı bayrağın tamamıdır.\n\nÖrnek: 01000011 = C.",
+      "hint": "İlk üç grup C, T, F olur. 01111011 açılan parantezdir.",
+      "flag": "CTF{bit_izi}",
+      "unlockAt": 135
+    },
+    {
+      "id": "crypto-9",
+      "category": "crypto",
+      "title": "Sayıdan Harf",
+      "points": 250,
+      "minutes": 25,
+      "difficulty": "Orta",
+      "icon": "Hash",
+      "description": "A=1, B=2 diye gider. Eğik çizgi alt çizgidir.",
+      "story": "Levhadaki sayılar:\n\n18 1 4 1 18 / 11 15 4\n\nA=1, B=2, ... Z=26. Eğik çizgi alt çizgi yerine duruyor. Harfleri birleştirip CTF{ } içine al.",
+      "hint": "18 = R. Aynı sayı kelimenin sonunda bir kez daha var.",
+      "flag": "CTF{radar_kod}",
+      "unlockAt": 135
+    },
+    {
+      "id": "crypto-10",
+      "category": "crypto",
+      "title": "Dönen Anahtar",
+      "points": 400,
+      "minutes": 40,
+      "difficulty": "Zor",
+      "icon": "KeyRound",
+      "description": "Anahtar GECE. Her harf, anahtardaki sıradaki harf kadar kaymış.",
+      "story": "Şifreli iç metin:\n\nCTF{bmiititi_miei}\n\nYöntem Vigenère. Anahtar: GECE\nG=6, E=4, C=2, E=4. Anahtar harf harf döner. Alt çizgi anahtarı ilerletmez; bir sonraki harfte kaldığı yerden devam eder.\n\nÇözerken her harfi, o adımdaki anahtar kadar GERİ al.\nÖrnek: anahtar G ise 6 geri.",
+      "hint": "İlk harf b, anahtar G. 6 geri gidince v olur. Sonra E, C, E, G diye döner.",
+      "flag": "CTF{vigenere_gece}",
+      "unlockAt": 105
+    },
+    {
+      "id": "crypto-11",
+      "category": "crypto",
+      "title": "İki Katman",
+      "points": 450,
+      "minutes": 35,
+      "difficulty": "Zor",
+      "icon": "Layers",
+      "description": "Dış katman Base64. İçeride bir kez daha kaydırma var.",
+      "story": "Dış zarf:\n\nQ1RGe3Z4dl94bmd6bmF9\n\nÖnce Base64 çöz. Çıkan metin CTF{ } biçimindedir ama içindeki harfler 13 adım kaymıştır. İkinci adım ROT13'tür. Rakam yok. Alt çizgi yerinde kalır.",
+      "hint": "Base64 sonrası iç metin vxv_xngzna gibi görünür. Ona ROT13 uygula.",
+      "flag": "CTF{iki_katman}",
+      "unlockAt": 150
+    },
+    {
+      "id": "crypto-12",
+      "category": "crypto",
+      "title": "Üç Adım",
+      "points": 480,
+      "minutes": 45,
+      "difficulty": "Zor",
+      "icon": "Layers",
+      "description": "Dışarıdan içeri: hex, ters çevir, bir adım geri.",
+      "story": "Dış katman hex. Boşluklar ayraçtır:\n\n7d 6e 6a 65 62 5f 64 76 7b 46 54 43\n\nSıra şöyle:\n1. Hex'i ASCII metne çevir.\n2. O metnin tamamını ters çevir.\n3. Harfleri 1 adım geri al. Parantez ve alt çizgi yerinde kalır.\n\nSonuç bayrağın kendisidir.",
+      "hint": "Hex çözülünce metin } ile başlar. Ters çevirince CTF{ görürsün. Son adımda v bir geri gidince u olur.",
+      "flag": "CTF{uc_adim}",
+      "unlockAt": 165
+    }
+  ]
+}
