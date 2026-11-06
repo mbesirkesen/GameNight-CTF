@@ -1,7 +1,11 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import fs from "fs";
 import http from "http";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
 import { nanoid } from "nanoid";
 import {
   CHALLENGE_ICONS,
@@ -24,9 +28,11 @@ import {
   createPlayer,
   deletePlayerByNick,
   extendDuration,
+  forceHint,
   forceUnlock,
   getEvent,
   insertSolve,
+  isForceHint,
   isForceUnlocked,
   isNickBanned,
   isPractice,
@@ -36,14 +42,18 @@ import {
   listAudit,
   listBackups,
   listBannedNicks,
+  listForceHints,
   listForceUnlocks,
   listPlayers,
   listSolvesForPlayer,
   prepareEvent,
   recentSolves,
   resetToLobby,
+  clearTakeover,
+  getTakeover,
   setFrozen,
   setPractice,
+  setTakeover,
   startEvent,
   getPlayerByNick,
   getPlayerByToken,
@@ -54,9 +64,46 @@ import {
 } from "./db.js";
 import { rateLimit } from "./rateLimit.js";
 import { attachRealtime, broadcast, wsStats } from "./realtime.js";
-import { dynamicPoints, getLevel, PARTICIPANTS } from "./scoring.js";
+import {
+  dynamicPoints,
+  getLevel,
+  PARTICIPANTS,
+  resolveDecay,
+} from "./scoring.js";
+
+function decayOpts(challenge) {
+  return {
+    decaySolves: challenge.decaySolves,
+    decayDrop: challenge.decayDrop,
+    minPoints: challenge.minPoints,
+  };
+}
 
 loadStore();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      const safeExt = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext)
+        ? ext
+        : ".png";
+      cb(null, `${Date.now()}-${nanoid(8)}${safeExt}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.mimetype)) {
+      return cb(new Error("Yalnızca jpg, png, gif veya webp yükle."));
+    }
+    return cb(null, true);
+  },
+});
 
 const PORT = Number(process.env.PORT || 8787);
 const ACCESS_CODE = process.env.ACCESS_CODE || "HSD_FIRAT_2026";
@@ -66,7 +113,6 @@ const PRACTICE_MINUTES = Number(process.env.PRACTICE_MINUTES || 15);
 const START_SCORE = 0;
 const NICK_MAX = 18;
 const SUBMIT_LIMIT = Number(process.env.SUBMIT_RATE_LIMIT || 30);
-const HINT_DELAY_MIN = { Kolay: 8, Orta: 12, Zor: 15 };
 const startedAtBoot = Date.now();
 
 const corsOrigin = (process.env.CORS_ORIGIN || "*")
@@ -84,6 +130,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: "256kb" }));
+app.use("/uploads", express.static(UPLOAD_DIR, { maxAge: "7d" }));
 
 function normalizeAccessCode(value) {
   return String(value || "")
@@ -122,23 +169,24 @@ function remainingMs(event, now = Date.now()) {
   return Math.max(0, event.startedAt + event.durationMs - now);
 }
 
-function isOpen(challengeId, elapsedMs) {
-  if (isForceUnlocked(challengeId)) return true;
-  return elapsedMs >= getUnlockAt(challengeId) * 60 * 1000;
+/** Sorular yalnızca admin "Aç" ile düşer; süre/dalga otomatik açmaz. */
+function isOpen(challengeId, _elapsedMs) {
+  return isForceUnlocked(challengeId);
 }
 
-function hintReady(challenge, elapsedMs) {
-  const unlockMin = getUnlockAt(challenge.id);
-  const delay = HINT_DELAY_MIN[challenge.difficulty] ?? 10;
-  return elapsedMs >= (unlockMin + delay) * 60 * 1000;
+/** İpucu yalnızca admin panelden açılır. */
+function hintReady(challenge, _elapsedMs) {
+  return isForceHint(challenge.id);
 }
 
 function publicChallenge(challenge, elapsedMs, solvedMap = {}) {
   const solves = countSolves(challenge.id);
   const open = isOpen(challenge.id, elapsedMs);
   const solved = Boolean(solvedMap[challenge.id]);
-  const current = dynamicPoints(challenge.points, solves);
+  const opts = decayOpts(challenge);
+  const current = dynamicPoints(challenge.points, solves, opts);
   const awarded = solvedMap[challenge.id]?.points;
+  const decay = resolveDecay(challenge.points, opts);
   return {
     id: challenge.id,
     category: challenge.category,
@@ -150,13 +198,19 @@ function publicChallenge(challenge, elapsedMs, solvedMap = {}) {
     icon: challenge.icon,
     description: challenge.description,
     story: open ? challenge.story : "",
+    imageUrl: open ? challenge.imageUrl || "" : "",
+    linkUrl: open ? challenge.linkUrl || "" : "",
+    linkLabel: open ? challenge.linkLabel || "" : "",
     hint: open && hintReady(challenge, elapsedMs) ? challenge.hint : null,
     hintReady: open && hintReady(challenge, elapsedMs),
-    hintDelayMin: HINT_DELAY_MIN[challenge.difficulty] ?? 10,
+    hintForceUnlocked: isForceHint(challenge.id),
     unlockAt: getUnlockAt(challenge.id),
     open,
     solves,
     participants: PARTICIPANTS,
+    decaySolves: decay.decaySolves,
+    decayDrop: decay.decayDrop,
+    minPoints: decay.minPoints,
     solved,
     awarded: awarded ?? null,
   };
@@ -218,6 +272,7 @@ function eventPayload(event = getEvent()) {
     waiting: !event.started,
     playerCount: listPlayers().length,
     announcement: latestAnnouncement(),
+    takeover: getTakeover(),
   };
 }
 
@@ -356,7 +411,7 @@ app.get("/api/me", authPlayer, (req, res) => {
       elapsedMs: live ? elapsed : 0,
     },
     announcement: latestAnnouncement(),
-    leaderboard: leaderboard(),
+    announcements: listAnnouncements(50),
     recent: live
       ? recentSolves(8).map((row) => ({
           nick: row.nick,
@@ -423,7 +478,11 @@ app.post("/api/submit", authPlayer, (req, res) => {
   }
 
   const solvesBefore = countSolves(challengeId);
-  const payout = dynamicPoints(challenge.points, solvesBefore);
+  const payout = dynamicPoints(
+    challenge.points,
+    solvesBefore,
+    decayOpts(challenge)
+  );
   insertSolve(req.player.id, challengeId, payout);
   const player = getPlayerByToken(req.player.token);
   writeAudit("flag_ok", req.player.nick, `${challengeId}:+${payout}`);
@@ -434,7 +493,6 @@ app.post("/api/submit", authPlayer, (req, res) => {
     points: payout,
     score: player.score,
   });
-  broadcast("leaderboard", { board: leaderboard() });
 
   return res.json({
     ok: true,
@@ -443,13 +501,8 @@ app.post("/api/submit", authPlayer, (req, res) => {
     level: getLevel(player.score),
     challengeId,
     title: challenge.title,
-    leaderboard: leaderboard(),
     profile: profileStats(player.id),
   });
-});
-
-app.get("/api/leaderboard", (_req, res) => {
-  res.json({ board: leaderboard() });
 });
 
 app.post("/api/admin/login", (req, res) => {
@@ -483,32 +536,49 @@ app.get("/api/admin/overview", authAdmin, (_req, res) => {
       ...item,
       initialPoints: item.points,
       unlockAt: getUnlockAt(item.id),
-      open: event.started ? isOpen(item.id, elapsed) : false,
+      open: isForceUnlocked(item.id),
       forceUnlocked: isForceUnlocked(item.id),
+      hintUnlocked: isForceHint(item.id),
       solves: countSolves(item.id),
-      currentPoints: dynamicPoints(item.points, countSolves(item.id)),
+      ...(() => {
+        const decay = resolveDecay(item.points, decayOpts(item));
+        const solves = countSolves(item.id);
+        return {
+          decaySolves: decay.decaySolves,
+          decayDrop: decay.decayDrop,
+          minPoints: decay.minPoints,
+          solves,
+          currentPoints: dynamicPoints(item.points, solves, decayOpts(item)),
+        };
+      })(),
     })),
     icons: CHALLENGE_ICONS,
     forceUnlocks: listForceUnlocks(),
+    forceHints: listForceHints(),
     recent: recentSolves(30),
     announcements: listAnnouncements(10),
     banned: listBannedNicks(),
     practice: isPractice(),
-    waves: listWaves().map((wave) => {
-      const statuses = wave.ids.map((id) => ({
-        id,
-        open: event.started ? isOpen(id, elapsed) : isForceUnlocked(id),
-        forceUnlocked: isForceUnlocked(id),
-      }));
-      const openCount = statuses.filter((item) => item.open).length;
-      return {
-        ...wave,
-        openCount,
-        total: wave.ids.length,
-        open: wave.ids.length > 0 && openCount === wave.ids.length,
-        statuses,
-      };
-    }),
+  });
+});
+
+app.post("/api/admin/upload", authAdmin, (req, res) => {
+  upload.single("image")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Yükleme başarısız" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "Dosya seçilmedi." });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    writeAudit("upload", "admin", req.file.filename);
+    return res.json({
+      ok: true,
+      imageUrl,
+      filename: req.file.filename,
+      size: req.file.size,
+      message: "Foto yüklendi",
+    });
   });
 });
 
@@ -566,6 +636,26 @@ app.post("/api/admin/unlock", authAdmin, (req, res) => {
   writeAudit("unlock", "admin", challengeId);
   broadcast("unlock", { challengeId });
   res.json({ ok: true, challengeId });
+});
+
+app.post("/api/admin/unlock-hint", authAdmin, (req, res) => {
+  const challengeId = req.body?.challengeId;
+  if (!getChallenge(challengeId)) {
+    return res.status(404).json({ error: "Soru yok." });
+  }
+  if (!isForceUnlocked(challengeId)) {
+    return res.status(400).json({
+      error: "Önce soruyu oyuncuya aç, sonra ipucunu aç.",
+    });
+  }
+  forceHint(challengeId);
+  writeAudit("unlock_hint", "admin", challengeId);
+  broadcast("hint", { challengeId });
+  res.json({
+    ok: true,
+    challengeId,
+    message: `${challengeId} ipucu açıldı`,
+  });
 });
 
 app.post("/api/admin/unlock-wave", authAdmin, (req, res) => {
@@ -658,6 +748,50 @@ app.post("/api/admin/announce", authAdmin, (req, res) => {
   res.json({ ok: true, announcement: row, message: "Duyuru gönderildi" });
 });
 
+app.post("/api/admin/takeover", authAdmin, (req, res) => {
+  const active = Boolean(req.body?.active);
+  const freezeClock = req.body?.freeze !== false;
+  if (active) {
+    const takeover = setTakeover({
+      active: true,
+      brand: "redbull",
+      title: "REDBULL BY HACKED",
+      subtitle: "",
+      imageUrl: "",
+      videoUrl: "/redbull-hacked.mp4",
+      startedAt: Date.now(),
+    });
+    let event = getEvent();
+    if (freezeClock && event.started && !event.frozen) {
+      event = setFrozen(true);
+    }
+    writeAudit("takeover_on", "admin", "redbull");
+    broadcast("takeover", { takeover });
+    broadcast("event", { event: eventPayload(event) });
+    return res.json({
+      ok: true,
+      takeover,
+      event: eventPayload(event),
+      message: "Red Bull takeover AÇIK · süre donduruldu",
+    });
+  }
+
+  const takeover = clearTakeover();
+  let event = getEvent();
+  if (freezeClock && event.frozen) {
+    event = setFrozen(false);
+  }
+  writeAudit("takeover_off", "admin", "redbull");
+  broadcast("takeover", { takeover });
+  broadcast("event", { event: eventPayload(event) });
+  return res.json({
+    ok: true,
+    takeover,
+    event: eventPayload(event),
+    message: "Takeover kapandı · ekranlar ve süre geri",
+  });
+});
+
 app.post("/api/admin/kick", authAdmin, (req, res) => {
   const nick = sanitizeNick(req.body?.nick);
   const ban = req.body?.ban !== false;
@@ -667,7 +801,6 @@ app.post("/api/admin/kick", authAdmin, (req, res) => {
   if (ban) banNick(nick, reason);
   writeAudit("kick", nick, ban ? `ban:${reason}` : reason);
   broadcast("kick", { nick, ban });
-  broadcast("leaderboard", { board: leaderboard() });
   res.json({
     ok: true,
     nick,
@@ -749,7 +882,7 @@ app.post("/api/admin/wipe", authAdmin, (_req, res) => {
   res.json({ ok: true, message: "Tüm oturum verisi silindi." });
 });
 
-server.listen(PORT, () => {
-  console.log(`CTF backend http://localhost:${PORT}`);
-  console.log(`CTF websocket ws://localhost:${PORT}/ws`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`CTF backend http://0.0.0.0:${PORT}`);
+  console.log(`CTF websocket ws://0.0.0.0:${PORT}/ws`);
 });
