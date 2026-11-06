@@ -3,8 +3,8 @@
     {
       "at": 0,
       "ids": [
-        "osint-2",
-        "crypto-1"
+        "crypto-1",
+        "custom-573321"
       ],
       "label": "Açılış · 3 kolay"
     },
@@ -84,20 +84,6 @@
     }
   ],
   "CHALLENGES": [
-    {
-      "id": "osint-2",
-      "category": "osint",
-      "title": "Satır Başları",
-      "points": 100,
-      "minutes": 12,
-      "difficulty": "Kolay",
-      "icon": "FileText",
-      "description": "Kısa bir duyurunun her satırı bir harf saklıyor.",
-      "story": "Mahalle panosundaki duyuru beş satır. Bayrak, satırların ilk harfleridir. Hepsini küçük yaz.\n\nSis kalktı\nİz sürülür\nYol uzar\nAyna kırık\nHava soğuk",
-      "hint": "Beş satır, beş harf. Baştan sona birleştir.",
-      "flag": "CTF{siyah}",
-      "unlockAt": 0
-    },
     {
       "id": "osint-3",
       "category": "osint",
@@ -347,6 +333,12 @@
       "description": "A=1, B=2 diye gider. Eğik çizgi alt çizgidir.",
       "story": "Levhadaki sayılar:\n\n18 1 4 1 18 / 11 15 4\n\nA=1, B=2, ... Z=26. Eğik çizgi alt çizgi yerine duruyor. Harfleri birleştirip CTF{ } içine al.",
       "hint": "18 = R. Aynı sayı kelimenin sonunda bir kez daha var.",
+      "imageUrl": "",
+      "linkUrl": "",
+      "linkLabel": "",
+      "decaySolves": 10,
+      "decayDrop": 50,
+      "minPoints": 100,
       "flag": "CTF{radar_kod}",
       "unlockAt": 135
     },
@@ -391,6 +383,23 @@
       "hint": "Hex çözülünce metin } ile başlar. Ters çevirince CTF{ görürsün. Son adımda v bir geri gidince u olur.",
       "flag": "CTF{uc_adim}",
       "unlockAt": 165
+    },
+    {
+      "id": "custom-573321",
+      "category": "osint",
+      "title": "twst",
+      "points": 100,
+      "minutes": 15,
+      "difficulty": "Kolay",
+      "icon": "Search",
+      "description": "test",
+      "story": "testt",
+      "hint": "est",
+      "imageUrl": "/uploads/1793962585160-TC0h3hX7.png",
+      "linkUrl": "",
+      "linkLabel": "",
+      "flag": "CTF{test}",
+      "unlockAt": 0
     }
   ]
 }

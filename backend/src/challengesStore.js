@@ -55,6 +55,31 @@ export function flagsMatch(submitted, expected) {
   return Boolean(left && right && left === right);
 }
 
+/** Opsiyonel http(s) URL veya /uploads/... yolu; boş bırakılabilir. */
+export function normalizeOptionalUrl(value, { field = "url", max = 500 } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.length > max) {
+    throw new Error(`${field}: en fazla ${max} karakter`);
+  }
+  if (raw.startsWith("/uploads/")) {
+    if (!/^\/uploads\/[a-zA-Z0-9._-]+$/.test(raw)) {
+      throw new Error(`${field}: geçersiz yükleme yolu`);
+    }
+    return raw;
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(`${field}: geçerli http(s) adresi veya yüklenen dosya olmalı`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`${field}: yalnızca http veya https`);
+  }
+  return parsed.toString();
+}
+
 function readRaw() {
   return JSON.parse(fs.readFileSync(FILE, "utf8"));
 }
@@ -90,8 +115,17 @@ function normalizeChallenge(input, { existingId = null } = {}) {
     ? input.difficulty
     : "Kolay";
   const points = Math.max(50, Math.round(Number(input.points) || 100));
-  const minutes = Math.max(5, Math.round(Number(input.minutes) || 15));
+  const minutes = Math.max(1, Math.round(Number(input.minutes) || 15));
   const unlockAt = Math.max(0, Math.round(Number(input.unlockAt) || 0));
+  const decaySolves = Math.max(1, Math.round(Number(input.decaySolves) || 10));
+  const decayDrop = Math.max(0, Math.round(Number(input.decayDrop) || 50));
+  const minPoints = Math.max(
+    50,
+    Math.round(Number(input.minPoints) > 0 ? Number(input.minPoints) : 100)
+  );
+  if (minPoints > points) {
+    throw new Error("Taban puan, başlangıç puanından büyük olamaz");
+  }
   const flag = normalizeFlag(input.flag);
   if (!flag) {
     throw new Error(
@@ -101,6 +135,11 @@ function normalizeChallenge(input, { existingId = null } = {}) {
   const title = String(input.title || "").trim();
   if (title.length < 3) throw new Error("Başlık çok kısa");
   const icon = ICONS.includes(input.icon) ? input.icon : "Search";
+  const imageUrl = normalizeOptionalUrl(input.imageUrl, { field: "imageUrl" });
+  const linkUrl = normalizeOptionalUrl(input.linkUrl, { field: "linkUrl" });
+  const linkLabel = String(input.linkLabel || "")
+    .trim()
+    .slice(0, 80);
 
   return {
     id,
@@ -113,6 +152,12 @@ function normalizeChallenge(input, { existingId = null } = {}) {
     description: String(input.description || "").trim(),
     story: String(input.story || "").trim(),
     hint: String(input.hint || "").trim(),
+    imageUrl,
+    linkUrl,
+    linkLabel: linkUrl ? linkLabel : "",
+    decaySolves,
+    decayDrop,
+    minPoints,
     flag,
     unlockAt,
   };
