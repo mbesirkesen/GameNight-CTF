@@ -1513,7 +1513,7 @@ function ChallengeBoard({
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-slate-200">
               Sorularda bulduğun gizli kodları CTF{"{icerik}"} formatında girerek puan
-              kazanabilirsin. Büyük/küçük harf fark etmez. Puan dinamiktir:{" "}
+              kazanabilirsin. Büyük/küçük harf ve İ/ı/i fark etmez. Puan dinamiktir:{" "}
               {PARTICIPANTS} kişilik odada bir soru çözüldükçe değeri düşer; sen
               gönderdiğin andaki puanı alırsın.
             </p>
@@ -2058,7 +2058,7 @@ function SolveModal({
               autoFocus
               autoComplete="off"
               spellCheck={false}
-              title="Büyük/küçük harf fark etmez"
+              title="Büyük/küçük harf ve İ/ı/i fark etmez"
               className="mt-2 w-full border border-green-500/70 bg-slate-950 px-3 py-2 font-mono text-sm text-green-300 outline-none placeholder:text-slate-600 focus:shadow-[0_0_16px_rgba(34,197,94,0.35)]"
             />
             {flagError && (
@@ -2207,7 +2207,7 @@ function HowToPage({ sessionArmed, eventStarted, onGoChallenges, onStartSession 
     {
       icon: Flag,
       title: "Bayrağı gönder",
-      text: "Kodu CTF{icerik} biçiminde yaz. Büyük/küçük harf fark etmez (CTF{ABC} = CTF{abc}). İçerikte yalnızca harf, rakam ve _ kullanılır.",
+      text: "Kodu CTF{icerik} biçiminde yaz. Büyük/küçük harf ve Türkçe İ/ı fark etmez (CTF{ABC} = CTF{abc}). İçerikte yalnızca harf, rakam ve _ kullanılır.",
     },
     {
       icon: Trophy,

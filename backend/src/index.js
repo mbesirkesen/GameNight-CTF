@@ -413,7 +413,8 @@ app.post("/api/submit", authPlayer, (req, res) => {
   }
   if (!normalizeFlag(flagRaw)) {
     return res.status(400).json({
-      error: "Biçim: CTF{icerik} — harf, rakam ve _ (büyük/küçük harf fark etmez)",
+      error:
+        "Biçim: CTF{icerik} — a-z, 0-9, _ (büyük/küçük ve İ/ı/i fark etmez)",
     });
   }
   if (!flagsMatch(flagRaw, challenge.flag)) {

@@ -25,12 +25,28 @@ const ICONS = [
   "Layers",
 ];
 
-/** Sabit biçim: CTF{küçük_harf_icerik} — karşılaştırma büyük/küçük harf duyarsız. */
+/**
+ * Türkçe İ/ı/I/i ve birleşik nokta (İ.toLowerCase → i̇) sorununu düzelt.
+ * Bayrak içeriği ASCII a-z olarak katlanır.
+ */
+export function foldFlagText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\u0130/g, "i") // İ
+    .replace(/\u0049/g, "i") // I
+    .replace(/\u0131/g, "i") // ı
+    .replace(/\u0069/g, "i") // i
+    .replace(/\u0307/g, "") // combining dot above
+    .toLocaleLowerCase("en-US");
+}
+
+/** Sabit biçim: CTF{küçük_harf_icerik} — i/İ/ı ve büyük/küçük harf fark etmez. */
 export function normalizeFlag(value) {
-  const raw = String(value || "").trim();
-  const match = raw.match(/^ctf\{([a-z0-9_]+)\}$/i);
+  const folded = foldFlagText(value);
+  const match = folded.match(/^ctf\{([a-z0-9_]+)\}$/);
   if (!match) return null;
-  return `CTF{${match[1].toLowerCase()}}`;
+  return `CTF{${match[1]}}`;
 }
 
 export function flagsMatch(submitted, expected) {

@@ -39,7 +39,7 @@ npm run dev:admin
 
 - Sabit format: `CTF{icerik}`
 - İçerik: yalnızca `a-z`, `0-9`, `_`
-- Büyük/küçük harf fark etmez
+- Büyük/küçük harf ve Türkçe `İ` / `ı` / `i` fark etmez
 
 ## Oyun gecesi checklist
 
