@@ -39,6 +39,11 @@ db.exec(`
     unlocked_at INTEGER NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS force_hints (
+    challenge_id TEXT PRIMARY KEY,
+    unlocked_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS banned_nicks (
     nick TEXT PRIMARY KEY,
     reason TEXT,
@@ -88,6 +93,60 @@ export function getEvent() {
     frozenElapsedMs,
     practice: getMeta("practice", "0") === "1",
   };
+}
+
+export function getTakeover() {
+  const raw = getMeta("takeover", "");
+  if (!raw) {
+    return {
+      active: false,
+      brand: null,
+      title: null,
+      subtitle: null,
+      imageUrl: null,
+      videoUrl: null,
+      startedAt: null,
+    };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      active: Boolean(parsed.active),
+      brand: parsed.brand || null,
+      title: parsed.title || null,
+      subtitle: parsed.subtitle || null,
+      imageUrl: parsed.imageUrl || null,
+      videoUrl: parsed.videoUrl || null,
+      startedAt: parsed.startedAt || null,
+    };
+  } catch {
+    return {
+      active: false,
+      brand: null,
+      title: null,
+      subtitle: null,
+      imageUrl: null,
+      videoUrl: null,
+      startedAt: null,
+    };
+  }
+}
+
+export function setTakeover(payload) {
+  setMeta("takeover", JSON.stringify(payload || { active: false }));
+  return getTakeover();
+}
+
+export function clearTakeover() {
+  return setTakeover({
+    active: false,
+    brand: null,
+    title: null,
+    subtitle: null,
+    imageUrl: null,
+    videoUrl: null,
+    startedAt: null,
+  });
 }
 
 export function ensureEventStarted(durationMs) {
@@ -213,6 +272,29 @@ export function isForceUnlocked(challengeId) {
   );
 }
 
+export function getForceUnlockedAt(challengeId) {
+  const row = db
+    .prepare("SELECT unlocked_at FROM force_unlocks WHERE challenge_id = ?")
+    .get(challengeId);
+  return row ? Number(row.unlocked_at) : null;
+}
+
+export function forceHint(challengeId) {
+  db.prepare(
+    "INSERT INTO force_hints (challenge_id, unlocked_at) VALUES (?, ?) ON CONFLICT(challenge_id) DO UPDATE SET unlocked_at = excluded.unlocked_at"
+  ).run(challengeId, Date.now());
+}
+
+export function listForceHints() {
+  return db.prepare("SELECT challenge_id, unlocked_at FROM force_hints").all();
+}
+
+export function isForceHint(challengeId) {
+  return Boolean(
+    db.prepare("SELECT 1 FROM force_hints WHERE challenge_id = ?").get(challengeId)
+  );
+}
+
 export function extendDuration(extraMs) {
   const event = getEvent();
   setMeta("durationMs", event.durationMs + extraMs);
@@ -252,6 +334,7 @@ export function wipeEvent() {
     DELETE FROM solves;
     DELETE FROM players;
     DELETE FROM force_unlocks;
+    DELETE FROM force_hints;
     DELETE FROM banned_nicks;
     DELETE FROM announcements;
     DELETE FROM audit_log;
@@ -261,12 +344,13 @@ export function wipeEvent() {
 
 /** Oyuncular kalsın; süre/dalga zorlamaları sıfırlansın → lobi. */
 export function resetToLobby(durationMs) {
-  db.exec("DELETE FROM solves; DELETE FROM force_unlocks;");
+  db.exec("DELETE FROM solves; DELETE FROM force_unlocks; DELETE FROM force_hints;");
   db.prepare("UPDATE players SET score = 0").run();
   setMeta("startedAt", "0");
   setMeta("frozen", "0");
   setMeta("frozenElapsedMs", "0");
   setMeta("practice", "0");
+  clearTakeover();
   if (durationMs) setMeta("durationMs", durationMs);
   return getEvent();
 }
