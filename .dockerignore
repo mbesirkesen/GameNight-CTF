@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+.git
+.DS_Store
+**/.env
+backend/data
+backend/uploads
+*.sqlite
+*.sqlite-*
+agent-transcripts
+**/*.md
+!README.md
