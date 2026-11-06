@@ -28,8 +28,6 @@ npm run dev:admin
 
 `backend/.env` (örnek: `backend/.env.example`):
 
-- `ACCESS_CODE` — oyuncu giriş kodu (varsayılan `HSD_FIRAT_2026`)
-- `ADMIN_PASSWORD` — admin şifresi (varsayılan `admin_hsd_2026`)
 - `SESSION_HOURS` — normal süre (3)
 - `PRACTICE_MINUTES` — prova süresi (15)
 - `SUBMIT_RATE_LIMIT` — dakikada bayrak denemesi (30)
