@@ -42,6 +42,14 @@ import {
 import { connectRealtime, playTone } from "./realtime.js";
 import MatrixIntro from "./MatrixIntro.jsx";
 
+/** HTTP (insecure) context'te crypto.randomUUID yok — siyah ekran çöküşünü önler. */
+function safeId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const ICON_MAP = {
   Search,
   FileText,
@@ -1204,7 +1212,7 @@ export default function App() {
       setRecent((current) =>
         [
           {
-            id: crypto.randomUUID(),
+            id: safeId(),
             user: nick,
             title: active.title,
             points: payout,
@@ -1701,9 +1709,10 @@ function ChallengeCard({
   onToggleHint,
   onOpen,
 }) {
-  const Icon = challenge.icon;
-  const shown = solved ? meta.payout : meta.current;
-  const dropped = shown < meta.initial;
+  const Icon = challenge.icon || Search;
+  const board = meta || { payout: 0, current: 0, initial: 0, solves: 0 };
+  const shown = solved ? board.payout : board.current;
+  const dropped = shown < board.initial;
 
   return (
     <article
@@ -1733,7 +1742,7 @@ function ChallengeCard({
           <span className="text-sm text-green-400">{shown}</span>
           {dropped && !solved && (
             <span className="mt-0.5 block text-[10px] text-slate-500 line-through">
-              {meta.initial}
+              {board.initial}
             </span>
           )}
         </p>
@@ -1749,7 +1758,7 @@ function ChallengeCard({
           ≈ {challenge.minutes} dk
         </span>
         <span className="font-mono text-[10px] tracking-wide text-slate-400">
-          {meta.solves}/{PARTICIPANTS} çözdü
+          {board.solves}/{PARTICIPANTS} çözdü
         </span>
         {solved && (
           <span className="border border-green-500 bg-green-500/10 px-2 py-0.5 font-mono text-[10px] tracking-[0.14em] text-green-400">
