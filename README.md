@@ -53,9 +53,35 @@ npm run dev:admin
 8. Bitince **Skor CSV** + **Çözüm CSV** indir
 9. İtiraz için audit log admin sağlık panelinde
 
+## Contabo / Docker (canlı)
+
+Tek sunucuda nginx + backend:
+
+| URL | Ne |
+|---|---|
+| `http://SUNUCU_IP/` | Oyuncu |
+| `http://SUNUCU_IP/admin/` | Admin |
+| `http://SUNUCU_IP/api/health` | Sağlık |
+
+```bash
+# Sunucuda (Docker + Compose kurulu olsun)
+cp .env.example .env
+# .env içinde ACCESS_CODE / ADMIN_PASSWORD güncelle
+docker compose up -d --build
+```
+
+Contabo firewall’da **80** (veya `HTTP_PORT`) açık olsun. Veri volume’da kalır: `ctf_data`, `ctf_uploads`.
+
+Yerelde denemek:
+
+```bash
+docker compose up --build
+# http://localhost/
+```
+
 ## Yedek host
 
-Tek makine düşerse: SQLite `backend/data/ctf.sqlite` + `backend/data/backups/` kopyalanıp başka makinede aynı `backend/.env` ile ayağa kaldırılır. Frontend/admin yalnızca API URL’ini (`VITE_API_URL`) yeni hosta çevirir.
+Tek makine düşerse: SQLite volume / `backend/data/ctf.sqlite` + `uploads` kopyalanıp başka makinede aynı `.env` ile ayağa kaldırılır.
 
 ## Neden backend?
 
