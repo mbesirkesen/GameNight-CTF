@@ -7,3 +7,151 @@ body {
   color: #e2e8f0;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
+
+@keyframes board-rain-fall {
+  0% {
+    transform: translate3d(0, -110%, 0);
+  }
+  100% {
+    transform: translate3d(0, 115vh, 0);
+  }
+}
+
+@keyframes board-rain-flicker {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.35);
+  }
+  55% {
+    filter: brightness(0.75);
+  }
+  70% {
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes board-rain-head-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow:
+      0 0 6px currentColor,
+      0 0 18px currentColor,
+      0 0 28px rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    opacity: 0.72;
+    text-shadow:
+      0 0 4px currentColor,
+      0 0 12px currentColor,
+      0 0 22px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes board-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes board-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    filter: blur(28px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(36px);
+  }
+}
+
+@keyframes board-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes board-live-blink {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 8px rgba(34, 211, 238, 0);
+  }
+}
+
+@keyframes board-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.board-rain-col {
+  animation-name: board-rain-fall, board-rain-flicker;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  will-change: transform;
+}
+
+.board-rain-head {
+  animation: board-rain-head-pulse 1.8s ease-in-out infinite;
+  color: #ecfeff;
+  font-weight: 700;
+}
+
+.board-scanline {
+  animation: board-scan 7.5s linear infinite;
+}
+
+.board-glow-pulse {
+  animation: board-pulse-glow 4.5s ease-in-out infinite;
+}
+
+.board-row-enter {
+  animation: board-row-in 0.55s ease-out both;
+}
+
+.board-live-dot {
+  animation: board-live-blink 1.6s ease-in-out infinite;
+}
+
+.board-title-shimmer {
+  background: linear-gradient(
+    90deg,
+    #67e8f9 0%,
+    #ffffff 35%,
+    #fbbf24 55%,
+    #67e8f9 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: board-shimmer 6s linear infinite;
+}
+
+.board-font-display {
+  font-family: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+}
+
+.board-font-mono {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
