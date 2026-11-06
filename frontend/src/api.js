@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8787";
+// Boş string = aynı origin (nginx / Docker). unset → local backend.
+const API_URL =
+  import.meta.env.VITE_API_URL !== undefined
+    ? String(import.meta.env.VITE_API_URL)
+    : "http://localhost:8787";
 const TOKEN_KEY = "ctf-player-token";
 
 export function getToken() {
@@ -42,6 +46,14 @@ export function getApiUrl() {
   return API_URL;
 }
 
+export function mediaUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/")) return `${API_URL}${raw}`;
+  return raw;
+}
+
 export function startRemoteSession({ nick, code }) {
   return request("/api/session/start", {
     method: "POST",
@@ -58,10 +70,6 @@ export function submitRemoteFlag({ challengeId, flag }) {
     method: "POST",
     body: JSON.stringify({ challengeId, flag }),
   });
-}
-
-export function fetchLeaderboard() {
-  return request("/api/leaderboard");
 }
 
 export function fetchEvent() {

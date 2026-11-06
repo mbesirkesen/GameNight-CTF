@@ -33,3 +33,463 @@ body {
 .rise {
   animation: rise 180ms ease-out;
 }
+
+@keyframes takeover-scan {
+  0% {
+    transform: translateY(-120%);
+  }
+  100% {
+    transform: translateY(120vh);
+  }
+}
+
+@keyframes takeover-title {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes takeover-live {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.55);
+  }
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 0 8px rgba(251, 113, 133, 0);
+  }
+}
+
+@keyframes takeover-rain-fall {
+  from {
+    transform: translate3d(-50%, -20%, 0);
+  }
+  to {
+    transform: translate3d(-50%, 110vh, 0);
+  }
+}
+
+@keyframes takeover-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes takeover-flicker {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.12;
+  }
+  9% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.2;
+  }
+  33% {
+    opacity: 0;
+  }
+  61% {
+    opacity: 0.08;
+  }
+  62% {
+    opacity: 0;
+  }
+  88% {
+    opacity: 0.28;
+  }
+  89% {
+    opacity: 0;
+  }
+}
+
+@keyframes takeover-tear-snap {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    transform: translateX(0);
+  }
+  20% {
+    clip-path: inset(12% 0 55% 0);
+    transform: translateX(-14px);
+  }
+  45% {
+    clip-path: inset(40% 0 18% 0);
+    transform: translateX(18px);
+  }
+  70% {
+    clip-path: inset(68% 0 4% 0);
+    transform: translateX(-8px);
+  }
+  100% {
+    clip-path: inset(100% 0 0 0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes takeover-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes takeover-warn-flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.35;
+  }
+  30% {
+    opacity: 0.05;
+  }
+  55% {
+    opacity: 0.45;
+  }
+  70% {
+    opacity: 0.1;
+  }
+}
+
+@keyframes takeover-blackout-pulse {
+  0% {
+    opacity: 0;
+    background: #fff;
+  }
+  18% {
+    opacity: 1;
+    background: #fff;
+  }
+  35% {
+    opacity: 1;
+    background: #000;
+  }
+  100% {
+    opacity: 1;
+    background: #000;
+  }
+}
+
+@keyframes takeover-slam {
+  0% {
+    opacity: 0;
+    transform: scale(1.35) skewX(-8deg);
+    filter: blur(12px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.96) skewX(2deg);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) skewX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes takeover-noise-shift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 120px -80px;
+  }
+}
+
+.takeover-root {
+  animation: takeover-enter 0.2s ease-out both;
+  pointer-events: auto;
+}
+
+.takeover-phase-infect .takeover-infect-veil {
+  background: rgba(2, 6, 23, 0.42);
+  backdrop-filter: contrast(1.2) saturate(0.65);
+}
+
+.takeover-phase-corrupt .takeover-infect-veil {
+  background: rgba(8, 0, 0, 0.72);
+  backdrop-filter: contrast(1.5) saturate(0.3) hue-rotate(-12deg);
+}
+
+.takeover-phase-blackout .takeover-infect-veil {
+  background: #000;
+}
+
+.takeover-flicker {
+  background: rgba(255, 255, 255, 0.07);
+  mix-blend-mode: screen;
+  animation: takeover-flicker 1.1s steps(2, end) infinite;
+  pointer-events: none;
+}
+
+.takeover-phase-corrupt .takeover-flicker {
+  animation-duration: 0.45s;
+  background: rgba(255, 60, 60, 0.12);
+}
+
+.takeover-tear {
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.35) 48%, transparent 52%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgba(255, 255, 255, 0.08) 3px 4px
+    );
+  animation: takeover-tear-snap 0.38s steps(3, end) both;
+  mix-blend-mode: lighten;
+}
+
+.takeover-phase-corrupt .takeover-tear {
+  animation-duration: 0.22s;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(251, 113, 133, 0.55) 46%, transparent 54%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgba(255, 255, 255, 0.12) 2px 3px
+    );
+}
+
+.takeover-noise {
+  pointer-events: none;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  animation: takeover-noise-shift 0.35s steps(4) infinite;
+  mix-blend-mode: overlay;
+}
+
+.takeover-phase-corrupt .takeover-noise {
+  opacity: 0.22;
+}
+
+.takeover-scan-early {
+  animation-duration: 1.6s;
+  height: 4rem;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(34, 211, 238, 0.22),
+    transparent
+  );
+}
+
+.takeover-phase-corrupt .takeover-scan-early {
+  animation-duration: 0.85s;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(251, 113, 133, 0.35),
+    transparent
+  );
+}
+
+.takeover-terminal {
+  z-index: 5;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(2, 6, 23, 0.72);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.55);
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
+
+.takeover-phase-corrupt .takeover-terminal {
+  border-color: rgba(251, 113, 133, 0.45);
+  color: #fda4af;
+}
+
+.takeover-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  animation: takeover-cursor-blink 0.7s step-end infinite;
+  color: #6ee7b7;
+}
+
+.takeover-warn-flash {
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.55), transparent 60%);
+  animation: takeover-warn-flash 0.7s ease-in-out infinite;
+}
+
+.takeover-blackout {
+  z-index: 20;
+  animation: takeover-blackout-pulse 0.75s ease-in forwards;
+}
+
+.takeover-title-slam {
+  animation: takeover-slam 0.65s cubic-bezier(0.16, 1, 0.3, 1) both, takeover-title 5s linear 0.65s infinite;
+}
+
+@keyframes takeover-under-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  20% {
+    transform: translate(-3px, 1px) skewX(0.4deg);
+    filter: hue-rotate(-8deg) contrast(1.2);
+  }
+  40% {
+    transform: translate(4px, -2px);
+    filter: saturate(0.5) brightness(1.15);
+  }
+  60% {
+    transform: translate(-5px, 0) skewX(-0.6deg);
+    filter: contrast(1.35) brightness(0.85);
+  }
+  80% {
+    transform: translate(2px, 2px);
+    filter: none;
+  }
+}
+
+.takeover-under-infect {
+  animation: takeover-under-shake 0.55s steps(2, end) infinite;
+}
+
+.takeover-under-corrupt {
+  animation: takeover-under-shake 0.22s steps(2, end) infinite;
+  filter: contrast(1.4) saturate(0.4) brightness(0.7);
+}
+
+.takeover-under-blackout,
+.takeover-under-reveal {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.takeover-escape-banner {
+  background: linear-gradient(
+    180deg,
+    rgba(127, 29, 29, 0.92),
+    rgba(127, 29, 29, 0.55),
+    transparent
+  );
+  animation: takeover-warn-flash 0.55s ease-in-out infinite;
+  text-shadow: 0 0 12px rgba(251, 113, 133, 0.8);
+}
+
+.takeover-backdrop {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(239, 68, 68, 0.28), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 90% 15%, rgba(34, 211, 238, 0.22), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(127, 29, 29, 0.45), transparent 55%),
+    linear-gradient(160deg, #020617 0%, #0b1220 40%, #1a0508 100%);
+}
+
+.takeover-grid {
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.55) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+}
+
+.takeover-rain-col {
+  position: absolute;
+  top: 0;
+  width: 1.2em;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.25;
+  color: #22d3ee;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.45);
+  animation: takeover-rain-fall linear infinite;
+}
+
+.takeover-scan {
+  height: 7rem;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: takeover-scan 3.2s linear infinite;
+}
+
+.takeover-vignette {
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+.takeover-mono {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
+
+.takeover-title {
+  font-family: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(100deg, #fb7185 0%, #fff 35%, #67e8f9 55%, #fb7185 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(251, 113, 133, 0.35));
+  animation: takeover-title 5s linear infinite;
+}
+
+.takeover-live-dot {
+  animation: takeover-live 1.4s ease-in-out infinite;
+}
+
+.takeover-chip {
+  display: inline-flex;
+  align-items: center;
+  border-width: 1px;
+  padding: 0.45rem 0.75rem;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  background: rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.takeover-stage-glow {
+  position: absolute;
+  inset: 8% 12%;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(251, 113, 133, 0.35),
+    rgba(34, 211, 238, 0.18),
+    transparent 70%
+  );
+  filter: blur(28px);
+}
+
+.takeover-frame {
+  border: 1px solid rgba(251, 113, 133, 0.35);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.2), rgba(2, 6, 23, 0.65));
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.12) inset,
+    0 25px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.takeover-img {
+  animation: rise 500ms ease-out;
+}

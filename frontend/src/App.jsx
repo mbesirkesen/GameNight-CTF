@@ -26,11 +26,15 @@ import {
   Type,
   Undo2,
   User,
+  Megaphone,
+  ExternalLink,
+  Image as ImageIcon,
   X,
 } from "lucide-react";
 import {
   fetchMe,
   getToken,
+  mediaUrl,
   setToken,
   startRemoteSession,
   submitRemoteFlag,
@@ -64,6 +68,9 @@ function hydrateRemoteChallenge(item) {
     icon: ICON_MAP[item.icon] || Search,
     hint: item.hint || "",
     story: item.story || "",
+    imageUrl: item.imageUrl || "",
+    linkUrl: item.linkUrl || "",
+    linkLabel: item.linkLabel || "",
   };
 }
 
@@ -73,7 +80,8 @@ const STORAGE_KEY = "cyber-detectives-ctf-v3h-nick";
 const DEFAULT_DURATION = 3 * 60 * 60 * 1000;
 const SESSION_HOURS = 3;
 const PARTICIPANTS = 50;
-const DECAY = 40;
+const DEFAULT_DECAY_SOLVES = 10;
+const DEFAULT_DECAY_DROP = 50;
 const ACCESS_CODE = "HSD_FIRAT_2026";
 const NICK_MAX = 18;
 
@@ -475,9 +483,35 @@ const CHALLENGES = [
 
 const NAV = [
   { id: "challenges", label: "Görevler" },
-  { id: "leaderboard", label: "Liderlik Tablosu" },
+  { id: "announcements", label: "Duyurular" },
   { id: "howto", label: "Nasıl Oynanır?" },
 ];
+
+const DISMISSED_ANNOUNCE_KEY = "ctf-dismissed-announce";
+
+function isAnnouncementDismissed(id) {
+  if (id == null) return false;
+  return sessionStorage.getItem(DISMISSED_ANNOUNCE_KEY) === String(id);
+}
+
+function dismissAnnouncement(id) {
+  if (id == null) return;
+  sessionStorage.setItem(DISMISSED_ANNOUNCE_KEY, String(id));
+}
+
+function formatAnnounceWhen(ts) {
+  if (!ts) return "";
+  try {
+    return new Date(ts).toLocaleString("tr-TR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
 
 function getLevel(score) {
   if (score >= 5200) return 6;
@@ -488,16 +522,27 @@ function getLevel(score) {
   return 1;
 }
 
-function minPointsFor(initial) {
-  return Math.max(50, Math.round(initial * 0.2));
+function decayOptsFor(challenge = {}) {
+  return {
+    decaySolves: challenge.decaySolves || DEFAULT_DECAY_SOLVES,
+    decayDrop: challenge.decayDrop ?? DEFAULT_DECAY_DROP,
+    minPoints: challenge.minPoints,
+  };
 }
 
-function dynamicPoints(initial, solves) {
-  const minimum = minPointsFor(initial);
-  if (solves <= 0) return initial;
-  const value =
-    ((minimum - initial) / (DECAY * DECAY)) * (solves * solves) + initial;
-  return Math.max(minimum, Math.ceil(value));
+function minPointsFor(initial, opts = {}) {
+  if (Number(opts.minPoints) > 0) return Math.max(50, Math.round(opts.minPoints));
+  return 100;
+}
+
+function dynamicPoints(initial, solves, opts = {}) {
+  const points = Math.max(50, Math.round(Number(initial) || 100));
+  const decaySolves = Math.max(1, Math.round(Number(opts.decaySolves) || DEFAULT_DECAY_SOLVES));
+  const decayDrop = Math.max(0, Math.round(Number(opts.decayDrop) ?? DEFAULT_DECAY_DROP));
+  const minimum = minPointsFor(points, opts);
+  const n = Math.max(0, Number(solves) || 0);
+  if (n <= 0) return points;
+  return Math.max(minimum, Math.ceil(points - (decayDrop / decaySolves) * n));
 }
 
 function hashId(id) {
@@ -526,19 +571,26 @@ function rivalSolvesFor(challenge, elapsedMs, durationMs) {
 }
 
 function scoringMeta(challenge, elapsedMs, durationMs, solved, awardedPoints) {
+  const opts = decayOptsFor(challenge);
   const rivals = rivalSolvesFor(challenge, elapsedMs, durationMs);
-  const solves = rivals + (solved ? 1 : 0);
-  const current = dynamicPoints(challenge.points, solves);
+  const solves =
+    typeof challenge.solves === "number"
+      ? challenge.solves
+      : rivals + (solved ? 1 : 0);
+  const current = dynamicPoints(challenge.points, solves, opts);
   const payout = solved
-    ? awardedPoints ?? dynamicPoints(challenge.points, Math.max(0, solves - 1))
-    : dynamicPoints(challenge.points, rivals);
+    ? awardedPoints ??
+      dynamicPoints(challenge.points, Math.max(0, solves - 1), opts)
+    : dynamicPoints(challenge.points, rivals, opts);
   return {
     rivals,
     solves,
     current,
     payout,
     initial: challenge.points,
-    minimum: minPointsFor(challenge.points),
+    minimum: minPointsFor(challenge.points, opts),
+    decaySolves: opts.decaySolves,
+    decayDrop: opts.decayDrop,
   };
 }
 
@@ -654,16 +706,6 @@ function formatRecentWhen(when) {
   return `${Math.floor(sec / 86400)} gün`;
 }
 
-function mapLeaderboard(rows, currentNick) {
-  return (rows || []).map((row) => ({
-    name: row.nick || row.name,
-    score: row.score,
-    solved: row.solved ?? 0,
-    level: row.level,
-    isUser: (row.nick || row.name) === currentNick,
-  }));
-}
-
 export default function App() {
   const stored = useRef(readSession());
   const [sessionArmed, setSessionArmed] = useState(
@@ -700,13 +742,15 @@ export default function App() {
   const [filter, setFilter] = useState("Tümü");
   const [remoteCatalog, setRemoteCatalog] = useState([]);
   const [remoteWaves, setRemoteWaves] = useState(null);
-  const [remoteBoard, setRemoteBoard] = useState([]);
   const [frozen, setFrozen] = useState(false);
   const [eventStarted, setEventStarted] = useState(false);
   const [lobbyCount, setLobbyCount] = useState(0);
   const [serverElapsedMs, setServerElapsedMs] = useState(null);
   const [serverRemainingMs, setServerRemainingMs] = useState(null);
   const [announcement, setAnnouncement] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [takeover, setTakeover] = useState(null);
+  const [takeoverPhase, setTakeoverPhase] = useState("infect");
   const [connection, setConnection] = useState("online");
   const [profile, setProfile] = useState({
     solvedCount: 0,
@@ -722,18 +766,6 @@ export default function App() {
   const waves = remoteWaves?.length ? remoteWaves : RELEASE_WAVES;
   const active = catalog.find((item) => item.id === activeId) ?? null;
   const level = getLevel(score);
-  const board = useMemo(() => {
-    if (remoteBoard.length) return remoteBoard;
-    if (!sessionArmed) return [];
-    return [
-      {
-        name: nick,
-        score,
-        solved: solvedIds.length,
-        isUser: true,
-      },
-    ];
-  }, [remoteBoard, sessionArmed, nick, score, solvedIds.length]);
   const inLobby = sessionArmed && !eventStarted;
   const elapsed =
     !eventStarted
@@ -821,7 +853,7 @@ export default function App() {
     const live = Boolean(me.event?.started);
     // Sadece lobi → oyun anında görevlere geç; howto'da okurken zorla atma
     if (wasWaiting.current && live) {
-      setToast("Oyun başladı · ilk dalga açıldı");
+      setToast("Oyun başladı · admin soruları tek tek açacak");
       announcedWave.current = 0;
       setView((current) => (current === "lobby" ? "challenges" : current));
     }
@@ -843,10 +875,22 @@ export default function App() {
     );
     setRemoteCatalog((me.challenges || []).map(hydrateRemoteChallenge));
     setRemoteWaves(me.event.waves || null);
-    setRemoteBoard(mapLeaderboard(me.leaderboard, me.nick));
     if (me.profile) setProfile(me.profile);
-    if (me.announcement || me.event?.announcement) {
-      setAnnouncement(me.announcement || me.event.announcement);
+    if (Array.isArray(me.announcements)) {
+      setAnnouncements(me.announcements);
+    }
+    const latest = me.announcement || me.event?.announcement || null;
+    if (latest?.id && !isAnnouncementDismissed(latest.id)) {
+      setAnnouncement(latest);
+    } else if (!latest) {
+      setAnnouncement(null);
+    } else {
+      setAnnouncement((current) =>
+        current?.id === latest.id ? null : current
+      );
+    }
+    if (me.event?.takeover) {
+      setTakeover(me.event.takeover.active ? me.event.takeover : null);
     }
     setConnection("online");
     if (Array.isArray(me.recent)) {
@@ -943,9 +987,21 @@ export default function App() {
       onStatus: (status) => setConnection(status === "online" ? "online" : "offline"),
       onMessage: (msg) => {
         if (msg.type === "announce" && msg.announcement) {
+          sessionStorage.removeItem(DISMISSED_ANNOUNCE_KEY);
           setAnnouncement(msg.announcement);
+          setAnnouncements((current) => {
+            const next = [
+              msg.announcement,
+              ...current.filter((row) => row.id !== msg.announcement.id),
+            ];
+            return next.slice(0, 50);
+          });
           setToast(msg.announcement.text);
           playTone("wave");
+        }
+        if (msg.type === "takeover" && msg.takeover) {
+          setTakeover(msg.takeover.active ? msg.takeover : null);
+          if (!msg.takeover.active) setTakeoverPhase("infect");
         }
         if (msg.type === "event_start") {
           fetchMe().then(applyRemoteState).catch(() => {});
@@ -954,7 +1010,20 @@ export default function App() {
         if (msg.type === "wave" || msg.type === "unlock") {
           fetchMe().then(applyRemoteState).catch(() => {});
           playTone("wave");
-          setToast(msg.wave?.label || "Yeni sorular açıldı");
+          setToast(
+            msg.challengeId
+              ? `Yeni soru açıldı · ${msg.challengeId}`
+              : "Yeni soru(lar) açıldı"
+          );
+        }
+        if (msg.type === "hint") {
+          fetchMe().then(applyRemoteState).catch(() => {});
+          playTone("wave");
+          setToast(
+            msg.challengeId
+              ? `İpucu açıldı · ${msg.challengeId}`
+              : "Yeni ipucu açıldı"
+          );
         }
         if (msg.type === "solve") {
           setRecent((current) =>
@@ -970,12 +1039,7 @@ export default function App() {
               ...current,
             ].slice(0, 8)
           );
-          if (Array.isArray(msg.board) || msg.type === "solve") {
-            fetchMe().then(applyRemoteState).catch(() => {});
-          }
-        }
-        if (msg.type === "leaderboard" && Array.isArray(msg.board)) {
-          setRemoteBoard(mapLeaderboard(msg.board, nick));
+          fetchMe().then(applyRemoteState).catch(() => {});
         }
         if (msg.type === "kick" && msg.nick === nick) {
           setToken(null);
@@ -993,19 +1057,6 @@ export default function App() {
       },
     });
   }, [sessionArmed, nick]);
-
-  useEffect(() => {
-    if (!sessionArmed || !eventStarted) return;
-    if (announcedWave.current === null) {
-      announcedWave.current = waveNow.at;
-      return;
-    }
-    if (waveNow.at !== announcedWave.current && waveNow.at > 0) {
-      announcedWave.current = waveNow.at;
-      setToast(`Yeni dalga açıldı · ${waveNow.label}`);
-      playTone("wave");
-    }
-  }, [sessionArmed, eventStarted, waveNow]);
 
   useEffect(() => {
     if (!eventStarted || closed) return;
@@ -1069,7 +1120,7 @@ export default function App() {
       setActiveId(null);
       return;
     }
-    if (sessionArmed && !eventStarted && (next === "challenges" || next === "leaderboard")) {
+    if (sessionArmed && !eventStarted && next === "challenges") {
       setToast("Admin oyunu başlatana kadar lobidesin.");
       setView("lobby");
       setActiveId(null);
@@ -1149,29 +1200,6 @@ export default function App() {
       setSolvedIds((current) =>
         current.includes(active.id) ? current : [...current, active.id]
       );
-      setRemoteBoard((current) =>
-        mapLeaderboard(
-          [
-            ...current
-              .filter((row) => !row.isUser)
-              .map((row) => ({
-                nick: row.name,
-                score: row.score,
-                solved: row.solved,
-                level: row.level,
-              })),
-            {
-              nick,
-              score: result.score,
-              solved: solvedIds.includes(active.id)
-                ? solvedIds.length
-                : solvedIds.length + 1,
-              level: getLevel(result.score),
-            },
-          ].sort((a, b) => b.score - a.score || a.nick.localeCompare(b.nick)),
-          nick
-        )
-      );
       setRecent((current) =>
         [
           {
@@ -1204,7 +1232,17 @@ export default function App() {
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(34,211,238,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.045)_1px,transparent_1px)] bg-[size:52px_52px]" />
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_36%),radial-gradient(circle_at_80%_20%,rgba(168,85,247,0.08),transparent_28%)]" />
 
-      <div className="relative">
+      {takeover?.active && (
+        <SponsorTakeover takeover={takeover} onPhase={setTakeoverPhase} />
+      )}
+
+      <div
+        className={`relative ${
+          takeover?.active
+            ? `pointer-events-none select-none takeover-under takeover-under-${takeoverPhase}`
+            : ""
+        }`}
+      >
         <Navbar
           view={view}
           onNavigate={changeView}
@@ -1224,8 +1262,22 @@ export default function App() {
         />
 
         {announcement?.text && sessionArmed && (
-          <div className="border-b border-amber-400/40 bg-amber-400/10 px-4 py-2 text-center font-mono text-xs text-amber-100">
-            DUYURU · {announcement.text}
+          <div className="relative border-b border-amber-400/40 bg-amber-400/10 px-10 py-2 text-center font-mono text-xs text-amber-100">
+            <span className="inline-flex max-w-full items-center gap-2">
+              <Megaphone size={12} className="shrink-0" />
+              <span className="truncate">DUYURU · {announcement.text}</span>
+            </span>
+            <button
+              type="button"
+              aria-label="Duyuruyu kapat"
+              onClick={() => {
+                dismissAnnouncement(announcement.id);
+                setAnnouncement(null);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 border border-amber-400/40 p-0.5 text-amber-200/80 transition hover:bg-amber-400/20 hover:text-amber-50"
+            >
+              <X size={12} />
+            </button>
           </div>
         )}
 
@@ -1236,7 +1288,10 @@ export default function App() {
         )}
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-          {sessionArmed && !eventStarted && (
+          {sessionArmed &&
+            !eventStarted &&
+            view !== "announcements" &&
+            view !== "howto" && (
             <WaitingRoom nick={nick} lobbyCount={lobbyCount} />
           )}
           {sessionArmed &&
@@ -1251,7 +1306,6 @@ export default function App() {
               onToggleHint={toggleHint}
               onOpen={openChallenge}
               recent={feed}
-              board={board}
               profile={profile}
               filter={filter}
               onFilter={setFilter}
@@ -1263,8 +1317,8 @@ export default function App() {
               waveNow={waveNow}
             />
           )}
-          {view === "leaderboard" && sessionArmed && eventStarted && (
-            <LeaderboardPage board={board} />
+          {view === "announcements" && sessionArmed && (
+            <AnnouncementsPage announcements={announcements} />
           )}
           {view === "howto" && !inLobby && (
             <HowToPage
@@ -1417,7 +1471,6 @@ function ChallengeBoard({
   onToggleHint,
   onOpen,
   recent,
-  board,
   profile,
   filter,
   onFilter,
@@ -1477,17 +1530,13 @@ function ChallengeBoard({
                     {openChallenges.length}/{totalCount}
                   </span>
                   {" · "}
-                  <span className="text-slate-400">{waveNow.label}</span>
+                  <span className="text-slate-400">
+                    Admin açtıkça sorular düşer
+                  </span>
                 </p>
-                {upcoming ? (
-                  <p className="mt-1 font-mono text-xs text-amber-300">
-                    Sonraki dalga {formatCountdown(nextIn)} · {upcoming.label}
-                  </p>
-                ) : (
-                  <p className="mt-1 font-mono text-xs text-green-400">
-                    Tüm dalgalar açıldı
-                  </p>
-                )}
+                <p className="mt-1 font-mono text-xs text-amber-300">
+                  Kapalı sorular listede görünmez; moderatör tek tek açar.
+                </p>
               </>
             )}
           </div>
@@ -1577,10 +1626,8 @@ function ChallengeBoard({
         />
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <ProfileWidget profile={profile} />
-          <WaveWidget elapsed={elapsed} upcoming={upcoming} />
           <DynamicScoreWidget />
           <RecentWidget recent={recent} />
-          <MiniBoard board={board} />
         </aside>
       </div>
     </div>
@@ -1614,15 +1661,14 @@ function CategoryColumn({
       <div className="space-y-4">
         {items.length === 0 && (
           <p className="border border-dashed border-slate-700 bg-slate-900/40 p-4 text-sm text-slate-500">
-            Bu kategoride henüz açık soru yok. Sonraki dalgayı bekle.
+            Bu kategoride henüz açık soru yok. Admin açınca burada görünür.
           </p>
         )}
         {items.map((challenge) => {
-          const hintReady = isHintOpen(challenge, elapsed);
-          const hintRemaining = msUntil(
-            (unlockMinuteFor(challenge.id) + hintDelayFor(challenge)) * 60 * 1000,
-            elapsed
-          );
+          const hintReady =
+            typeof challenge.hintReady === "boolean"
+              ? challenge.hintReady
+              : isHintOpen(challenge, elapsed);
           return (
             <ChallengeCard
               key={challenge.id}
@@ -1631,7 +1677,7 @@ function CategoryColumn({
               meta={scoreboard[challenge.id]}
               solved={solvedIds.includes(challenge.id)}
               hintReady={hintReady}
-              hintRemaining={hintRemaining}
+              hintRemaining={0}
               hintOpen={Boolean(hints[challenge.id]) && hintReady}
               onToggleHint={() => onToggleHint(challenge.id)}
               onOpen={() => onOpen(challenge.id)}
@@ -1723,7 +1769,7 @@ function ChallengeCard({
       {!hintReady && !solved && (
         <p className="mt-3 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
           <Lock size={12} />
-          İpucu {formatCountdown(hintRemaining)} sonra
+          İpucu admin açınca
         </p>
       )}
 
@@ -1739,7 +1785,7 @@ function ChallengeCard({
           }`}
         >
           {!hintReady
-            ? `[ KİLİTLİ ${formatCountdown(hintRemaining)} ]`
+            ? "[ KİLİTLİ ]"
             : hintOpen
               ? "[ İPUCUYU GİZLE ]"
               : "[ İPUCU AL ]"}
@@ -1822,7 +1868,10 @@ function ProfileWidget({ profile }) {
 }
 
 function DynamicScoreWidget() {
-  const sample = dynamicPoints(250, 20);
+  const sample = dynamicPoints(250, 20, {
+    decaySolves: DEFAULT_DECAY_SOLVES,
+    decayDrop: DEFAULT_DECAY_DROP,
+  });
   return (
     <section className="border border-slate-700 bg-slate-900/60 p-4 backdrop-blur">
       <h2 className="flex items-center gap-2 font-mono text-xs tracking-[0.12em] text-amber-300">
@@ -1830,14 +1879,16 @@ function DynamicScoreWidget() {
         DİNAMİK PUAN
       </h2>
       <p className="mt-2 text-xs leading-relaxed text-slate-400">
-        Oda: {PARTICIPANTS} kişi. Soru çözüldükçe değeri düşer. Erken çözen daha çok alır.
+        Soru çözüldükçe değeri düşer. Oranı admin soru bazında ayarlar. Erken
+        çözen daha çok alır.
       </p>
       <div className="mt-3 border border-slate-800 bg-slate-950/60 p-2.5 font-mono text-[11px] text-slate-300">
         <p>
           Örnek 250 →{" "}
-          <span className="text-green-400">{sample}</span> (20 çözüm)
+          <span className="text-green-400">{sample}</span> ({DEFAULT_DECAY_SOLVES}{" "}
+          çözümde −{DEFAULT_DECAY_DROP})
         </p>
-        <p className="mt-1 text-slate-500">Taban ≈ %20 · Decay {DECAY}</p>
+        <p className="mt-1 text-slate-500">Tabanın altına inmez</p>
       </div>
     </section>
   );
@@ -1876,41 +1927,6 @@ function RecentWidget({ recent }) {
             </li>
           ))}
         </ul>
-      )}
-    </section>
-  );
-}
-
-function MiniBoard({ board }) {
-  return (
-    <section className="border border-slate-700 bg-slate-900/60 p-4 backdrop-blur">
-      <h2 className="flex items-center gap-2 font-mono text-xs tracking-[0.12em] text-green-400">
-        <Trophy size={14} />
-        PUAN TABLOSU (CANLI)
-      </h2>
-      {board.length === 0 ? (
-        <p className="mt-3 font-mono text-xs text-slate-500">
-          Henüz oyuncu yok. Skorlar burada anlık güncellenir.
-        </p>
-      ) : (
-        <ol className="mt-3 space-y-1.5">
-          {board.slice(0, 10).map((row, index) => (
-            <li
-              key={`${row.name}-${index}`}
-              className={`flex items-center justify-between gap-2 px-2 py-1.5 font-mono text-xs ${
-                row.isUser
-                  ? "border-l-2 border-green-500 bg-green-500/10 text-green-300"
-                  : "text-slate-300"
-              }`}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="w-4 text-slate-500">{index + 1}</span>
-                <span className="truncate">{row.name}</span>
-              </span>
-              <span className="shrink-0 text-green-400">{row.score}</span>
-            </li>
-          ))}
-        </ol>
       )}
     </section>
   );
@@ -1993,6 +2009,33 @@ function SolveModal({
           <p className="text-[15px] leading-7 text-slate-200 sm:text-sm sm:leading-relaxed whitespace-pre-wrap">
             {challenge.story}
           </p>
+          {challenge.imageUrl && (
+            <figure className="mt-3 border border-slate-700 bg-slate-950">
+              <img
+                src={mediaUrl(challenge.imageUrl)}
+                alt="Soru görseli"
+                className="max-h-72 w-full object-contain"
+                loading="lazy"
+              />
+              <figcaption className="flex items-center gap-1.5 border-t border-slate-800 px-2 py-1 font-mono text-[10px] text-slate-500">
+                <ImageIcon size={11} />
+                Ek görsel
+              </figcaption>
+            </figure>
+          )}
+          {challenge.linkUrl && (
+            <a
+              href={challenge.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`mt-3 inline-flex max-w-full items-center gap-2 border px-3 py-2 font-mono text-xs tracking-wide transition ${theme.button}`}
+            >
+              <ExternalLink size={13} className="shrink-0" />
+              <span className="truncate">
+                {challenge.linkLabel || "Bağlantıyı aç"}
+              </span>
+            </a>
+          )}
         </div>
 
         <div className="mt-3 border border-amber-400/40 bg-amber-400/5 px-3 py-2 font-mono text-[11px] leading-relaxed text-amber-100/90">
@@ -2011,7 +2054,7 @@ function SolveModal({
           }`}
         >
           {!hintReady
-            ? `[ İPUCU KİLİTLİ · ${formatCountdown(hintRemaining)} ]`
+            ? "[ İPUCU KİLİTLİ · ADMIN BEKLENİYOR ]"
             : hintOpen
               ? "[ İPUCUYU GİZLE ]"
               : "[ İPUCU AL ]"}
@@ -2019,7 +2062,7 @@ function SolveModal({
         {!hintReady && (
           <p className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
             <Lock size={12} />
-            İpucu, soru açıldıktan {hintDelayFor(challenge)} dk sonra gelir.
+            İpucu, moderatör panelden açınca gelir.
           </p>
         )}
         {hintOpen && (
@@ -2077,69 +2120,359 @@ function SolveModal({
   );
 }
 
-function LeaderboardPage({ board }) {
-  const userRank = board.findIndex((row) => row.isUser) + 1;
+const HACK_BOOT_LINES = [
+  "kernel: unexpected interrupt on CPU0",
+  "usbhid: device descriptor read error",
+  "drm: page flip failed — retrying",
+  "seccomp: integrity check FAILED",
+  "injecting shellcode @ 0x7ffe91a0…",
+  "locking input / privilege escalate…",
+  "ROOT ACCESS GRANTED",
+];
+
+function tryTakeoverFullscreen() {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;
+  Promise.resolve(req.call(el)).catch(() => {});
+}
+
+function SponsorTakeover({ takeover, onPhase }) {
+  const title = takeover.title || "REDBULL BY HACKED";
+  const videoUrl = takeover.videoUrl || "/redbull-hacked.mp4";
+  const [phase, setPhase] = useState("infect"); // infect | corrupt | blackout | reveal
+  const [lineCount, setLineCount] = useState(1);
+  const [glitchKick, setGlitchKick] = useState(0);
+  const [escapeCaught, setEscapeCaught] = useState(false);
+  const onPhaseRef = useRef(onPhase);
+  const phaseRef = useRef(phase);
+  const introDoneRef = useRef(false);
+  onPhaseRef.current = onPhase;
+  phaseRef.current = phase;
+
+  // Sıra sabit: hack hissi → blackout → REDBULL + video (asla tersine atlama)
+  useEffect(() => {
+    introDoneRef.current = false;
+    setPhase("infect");
+    setLineCount(1);
+    setEscapeCaught(false);
+    onPhaseRef.current?.("infect");
+    const timers = [
+      setTimeout(() => {
+        setPhase("corrupt");
+        onPhaseRef.current?.("corrupt");
+      }, 3200),
+      setTimeout(() => {
+        setPhase("blackout");
+        onPhaseRef.current?.("blackout");
+      }, 6500),
+      setTimeout(() => {
+        introDoneRef.current = true;
+        setPhase("reveal");
+        onPhaseRef.current?.("reveal");
+        playTone("warn");
+      }, 7400),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [takeover?.startedAt, takeover?.active]);
+
+  // Sekme/pencere kaçışı, kapatma, kısayol ve fullscreen kilidi
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const blockUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    };
+
+    const blockKeys = (event) => {
+      const key = event.key;
+      const mod = event.ctrlKey || event.metaKey;
+      const blocked =
+        key === "Escape" ||
+        key === "F5" ||
+        key === "F11" ||
+        (mod && ["r", "R", "w", "W", "t", "T", "n", "N", "l", "L"].includes(key)) ||
+        (event.altKey && (key === "ArrowLeft" || key === "ArrowRight" || key === "F4"));
+      if (blocked) {
+        event.preventDefault();
+        event.stopPropagation();
+        setEscapeCaught(true);
+        if (introDoneRef.current) tryTakeoverFullscreen();
+      }
+    };
+
+    const blockMenu = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setEscapeCaught(true);
+    };
+
+    const armFullscreen = () => {
+      // Intro bitmeden fullscreen açma — visibility flicker reveal'a atlatıyordu
+      if (introDoneRef.current) tryTakeoverFullscreen();
+    };
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (!introDoneRef.current) return;
+        setEscapeCaught(true);
+        tryTakeoverFullscreen();
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        setEscapeCaught(true);
+        return;
+      }
+      setEscapeCaught(true);
+      // Intro sırasında asla reveal'a zıplatma — hack sahnesi oynasın
+      if (!introDoneRef.current) {
+        window.setTimeout(() => setEscapeCaught(false), 1600);
+        return;
+      }
+      tryTakeoverFullscreen();
+      playTone("warn");
+      if (phaseRef.current !== "reveal") {
+        setPhase("reveal");
+        onPhaseRef.current?.("reveal");
+      }
+      window.setTimeout(() => setEscapeCaught(false), 2200);
+    };
+
+    const onBlur = () => setEscapeCaught(true);
+    const onFocus = () => {
+      if (introDoneRef.current) tryTakeoverFullscreen();
+      window.setTimeout(() => setEscapeCaught(false), 1800);
+    };
+
+    const trapHistory = () => {
+      window.history.pushState({ takeoverLock: true }, "");
+    };
+    trapHistory();
+    const onPopState = () => {
+      trapHistory();
+      setEscapeCaught(true);
+      if (introDoneRef.current) tryTakeoverFullscreen();
+    };
+
+    window.addEventListener("beforeunload", blockUnload);
+    window.addEventListener("keydown", blockKeys, true);
+    window.addEventListener("contextmenu", blockMenu, true);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("pointerdown", armFullscreen, true);
+    window.addEventListener("keydown", armFullscreen, true);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("beforeunload", blockUnload);
+      window.removeEventListener("keydown", blockKeys, true);
+      window.removeEventListener("contextmenu", blockMenu, true);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("pointerdown", armFullscreen, true);
+      window.removeEventListener("keydown", armFullscreen, true);
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) Promise.resolve(exit.call(document)).catch(() => {});
+      }
+    };
+  }, [takeover?.startedAt, takeover?.active]);
+
+  useEffect(() => {
+    if (phase === "reveal" || phase === "blackout") return undefined;
+    const id = setInterval(() => {
+      setLineCount((n) => Math.min(HACK_BOOT_LINES.length, n + 1));
+    }, phase === "infect" ? 420 : 260);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "infect" && phase !== "corrupt") return undefined;
+    const id = setInterval(
+      () => setGlitchKick((n) => n + 1),
+      phase === "infect" ? 380 : 140
+    );
+    return () => clearInterval(id);
+  }, [phase]);
+
+  const revealed = phase === "reveal";
+  const rainCount = phase === "infect" ? 10 : phase === "corrupt" ? 18 : 22;
 
   return (
-    <section className="border border-green-500/50 bg-slate-900/60 p-5 backdrop-blur">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.16em] text-green-400">SIRALAMA</p>
-          <h1 className="mt-1 font-mono text-xl text-slate-100">Liderlik Tablosu</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Canlı sıralama — sunucudan ~8 sn’de bir yenilenir.
+    <div
+      className={`takeover-root fixed inset-0 z-[100] overflow-hidden text-slate-100 takeover-phase-${phase}`}
+      aria-live="assertive"
+      onPointerDown={() => {
+        if (introDoneRef.current) tryTakeoverFullscreen();
+      }}
+    >
+      {escapeCaught && (
+        <div className="takeover-escape-banner pointer-events-none absolute inset-x-0 top-0 z-[120] px-4 py-3 text-center">
+          <p className="takeover-mono text-xs tracking-[0.2em] text-rose-300 sm:text-sm">
+            ESCAPE ATTEMPT DETECTED · SESSION LOCKED
           </p>
         </div>
-        <p className="font-mono text-xs text-slate-400">
-          Senin sıran:{" "}
-          <span className="text-green-400">{userRank > 0 ? userRank : "—"}</span>
+      )}
+      {!revealed && (
+        <>
+          <div className="takeover-infect-veil absolute inset-0" />
+          <div className="takeover-tear absolute inset-0" key={glitchKick} />
+          <div className="takeover-flicker absolute inset-0" />
+          <div className="takeover-scan takeover-scan-early pointer-events-none absolute inset-x-0 top-0" />
+          <div className="takeover-noise absolute inset-0" aria-hidden />
+          <div className="takeover-rain pointer-events-none absolute inset-0" aria-hidden>
+            {Array.from({ length: rainCount }, (_, i) => (
+              <span
+                key={i}
+                className="takeover-rain-col"
+                style={{
+                  left: `${(i / rainCount) * 100}%`,
+                  animationDelay: `${-((i * 0.55) % 6)}s`,
+                  animationDuration: `${6 + (i % 5) * 1.1}s`,
+                  opacity:
+                    phase === "infect"
+                      ? 0.1 + (i % 3) * 0.04
+                      : 0.2 + (i % 4) * 0.06,
+                }}
+              >
+                {"01CTF<>/\\|#$% ".repeat(10)}
+              </span>
+            ))}
+          </div>
+          <div className="takeover-terminal absolute bottom-6 left-4 right-4 max-w-xl sm:left-8">
+            {HACK_BOOT_LINES.slice(0, lineCount).map((line, i) => (
+              <div
+                key={line}
+                className={`takeover-mono text-[11px] leading-5 sm:text-xs ${
+                  phase === "corrupt" ? "text-rose-300" : "text-emerald-400/90"
+                }`}
+              >
+                {line}
+                {i === lineCount - 1 && phase !== "blackout" ? (
+                  <span className="takeover-cursor">▌</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          {phase === "corrupt" && (
+            <div className="takeover-warn-flash pointer-events-none absolute inset-0" />
+          )}
+          {phase === "blackout" && (
+            <div className="takeover-blackout absolute inset-0" />
+          )}
+        </>
+      )}
+
+      {revealed && (
+        <>
+          <div className="takeover-backdrop absolute inset-0" />
+          <div className="takeover-grid pointer-events-none absolute inset-0" />
+          <div className="takeover-rain pointer-events-none absolute inset-0" aria-hidden>
+            {Array.from({ length: 18 }, (_, i) => (
+              <span
+                key={i}
+                className="takeover-rain-col"
+                style={{
+                  left: `${(i / 18) * 100}%`,
+                  animationDelay: `${-((i * 0.7) % 8)}s`,
+                  animationDuration: `${9 + (i % 5) * 1.4}s`,
+                  opacity: 0.12 + (i % 4) * 0.04,
+                }}
+              >
+                {"01CTF<>/\\|HACK ".repeat(8)}
+              </span>
+            ))}
+          </div>
+          <div className="takeover-scan pointer-events-none absolute inset-x-0 top-0" />
+          <div className="takeover-vignette pointer-events-none absolute inset-0" />
+
+          <div className="relative z-10 flex min-h-full flex-col items-center justify-center px-4 py-8 sm:px-8">
+            <h1 className="takeover-title takeover-title-slam mb-6 text-center text-3xl leading-[0.95] sm:mb-8 sm:text-5xl lg:text-6xl">
+              {title}
+            </h1>
+            <div className="takeover-stage relative w-full max-w-4xl">
+              <div className="takeover-stage-glow" />
+              <div className="takeover-frame relative overflow-hidden">
+                <video
+                  key={`${videoUrl}-${takeover?.startedAt || "v"}`}
+                  className="takeover-img relative z-10 mx-auto max-h-[70vh] w-full object-contain bg-black"
+                  src={videoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls={false}
+                  preload="auto"
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AnnouncementsPage({ announcements }) {
+  return (
+    <section className="border border-amber-400/40 bg-slate-900/60 p-5 backdrop-blur">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.16em] text-amber-300">
+            MODERATÖR
+          </p>
+          <h1 className="mt-1 flex items-center gap-2 font-mono text-xl text-slate-100">
+            <Megaphone size={20} className="text-amber-300" />
+            Duyurular
+          </h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Üst banttaki anlık duyuruyu × ile kapatabilirsin; geçmiş burada kalır.
+          </p>
+        </div>
+        <p className="font-mono text-xs text-slate-500">
+          {announcements.length} kayıt
         </p>
       </div>
 
-      <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[520px] text-left">
-          <thead>
-            <tr className="border-b border-slate-700 font-mono text-[11px] tracking-[0.14em] text-slate-500">
-              <th className="px-3 py-2 font-medium">SIRA</th>
-              <th className="px-3 py-2 font-medium">OYUNCU</th>
-              <th className="px-3 py-2 font-medium">ÇÖZÜLEN</th>
-              <th className="px-3 py-2 text-right font-medium">PUAN</th>
-            </tr>
-          </thead>
-          <tbody>
-            {board.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-3 py-6 font-mono text-sm text-slate-500"
-                >
-                  Henüz oyuncu yok.
-                </td>
-              </tr>
-            )}
-            {board.map((row, index) => (
-              <tr
-                key={`${row.name}-${index}`}
-                className={`border-b border-slate-800 font-mono text-sm ${
-                  row.isUser ? "bg-green-500/10 text-green-300" : "text-slate-300"
-                }`}
-              >
-                <td className="px-3 py-3 text-slate-500">{index + 1}</td>
-                <td className="px-3 py-3">
-                  {row.name}
-                  {row.isUser && (
-                    <span className="ml-2 border border-green-500 px-1.5 py-0.5 text-[10px] text-green-400">
-                      SEN
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-3">{row.solved}</td>
-                <td className="px-3 py-3 text-right text-green-400">{row.score}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ul className="mt-5 space-y-2">
+        {announcements.length === 0 && (
+          <li className="border border-slate-800 px-4 py-8 text-center font-mono text-sm text-slate-500">
+            Henüz duyuru yok.
+          </li>
+        )}
+        {announcements.map((row) => (
+          <li
+            key={row.id}
+            className="border border-slate-700/80 bg-slate-950/50 px-4 py-3"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-mono text-[10px] tracking-[0.14em] text-amber-400/80">
+                DUYURU #{row.id}
+              </p>
+              <p className="font-mono text-[10px] text-slate-500">
+                {formatAnnounceWhen(row.created_at)}
+              </p>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-200">
+              {row.text}
+            </p>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -2187,7 +2520,7 @@ function HowToPage({ sessionArmed, eventStarted, onGoChallenges, onStartSession 
     {
       icon: User,
       title: "Rumuzunu yaz",
-      text: "Liderlik tablosunda görünecek adını seç. 3-18 karakter; harf, rakam ve _ kullanılabilir.",
+      text: "Oyunda görünecek adını seç. 3-18 karakter; harf, rakam ve _ kullanılabilir. Sıralama finalde açıklanır.",
     },
     {
       icon: KeyRound,
@@ -2196,13 +2529,13 @@ function HowToPage({ sessionArmed, eventStarted, onGoChallenges, onStartSession 
     },
     {
       icon: Clock,
-      title: "Dalgaları bekle",
-      text: "Oyun başlayınca önce 3 kolay soru vardır. 15. dk'da 3 orta, 45. dk'da 1 zor gelir. Saat başlarında yeni kolaylar açılır.",
+      title: "Soruları bekle",
+      text: "Oyun başlayınca sorular otomatik düşmez. Moderatör admin panelden tek tek açar; açılanlar burada listelenir.",
     },
     {
       icon: Lightbulb,
-      title: "İpucu gecikir",
-      text: "İpucu hemen açılmaz. Kolayda 8 dk, ortada 12 dk, zorda 15 dk sonra [ İPUCU AL ] aktif olur. İpucu puan düşürmez.",
+      title: "İpucu admin açar",
+      text: "İpucu otomatik gelmez. Moderatör panelden açınca [ İPUCU AL ] aktif olur. İpucu puan düşürmez.",
     },
     {
       icon: Flag,
@@ -2212,7 +2545,7 @@ function HowToPage({ sessionArmed, eventStarted, onGoChallenges, onStartSession 
     {
       icon: Trophy,
       title: "Dinamik puan",
-      text: `Oda ${PARTICIPANTS} kişi. 250 puanlık bir soru ~20 çözümde ~200'e iner. Erken çözmek daha çok puan demektir.`,
+      text: "Puan dinamiktir: admin örneğin “20 çözümde 50 puan düş” diye ayarlar. Erken çözmek daha çok puan demektir.",
     },
     {
       icon: BookOpen,

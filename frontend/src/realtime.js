@@ -1,8 +1,15 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8787";
+const API_URL =
+  import.meta.env.VITE_API_URL !== undefined
+    ? String(import.meta.env.VITE_API_URL)
+    : "http://localhost:8787";
 
 function wsUrl() {
-  const base = API_URL.replace(/^http/, "ws");
-  return `${base}/ws`;
+  if (!API_URL) {
+    const proto = typeof location !== "undefined" && location.protocol === "https:" ? "wss:" : "ws:";
+    const host = typeof location !== "undefined" ? location.host : "localhost";
+    return `${proto}//${host}/ws`;
+  }
+  return `${API_URL.replace(/^http/, "ws")}/ws`;
 }
 
 export function connectRealtime({ onMessage, onStatus } = {}) {
