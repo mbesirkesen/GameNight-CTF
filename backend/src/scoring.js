@@ -1,16 +1,42 @@
+/** Varsayılan: her 10 çözümde 50 puan düşer; taban 100. */
+export const DEFAULT_DECAY_SOLVES = 10;
+export const DEFAULT_DECAY_DROP = 50;
 export const PARTICIPANTS = 50;
-export const DECAY = 40;
 
-export function minPointsFor(initial) {
-  return Math.max(50, Math.round(initial * 0.2));
+export function resolveDecay(initial, opts = {}) {
+  const points = Math.max(50, Math.round(Number(initial) || 100));
+  const decaySolves = Math.max(
+    1,
+    Math.round(Number(opts.decaySolves) || DEFAULT_DECAY_SOLVES)
+  );
+  const decayDrop = Math.max(
+    0,
+    Math.round(Number(opts.decayDrop) || DEFAULT_DECAY_DROP)
+  );
+  const minPoints = Math.max(
+    50,
+    Math.round(Number(opts.minPoints) > 0 ? Number(opts.minPoints) : 100)
+  );
+  return { points, decaySolves, decayDrop, minPoints };
 }
 
-export function dynamicPoints(initial, solves) {
-  const minimum = minPointsFor(initial);
-  if (solves <= 0) return initial;
-  const value =
-    ((minimum - initial) / (DECAY * DECAY)) * (solves * solves) + initial;
-  return Math.max(minimum, Math.ceil(value));
+export function minPointsFor(initial, opts = {}) {
+  return resolveDecay(initial, opts).minPoints;
+}
+
+/**
+ * Doğrusal düşüş: her çözümde (decayDrop / decaySolves) puan iner.
+ * Örn. her 10 çözümde 50 düş → 10. çözümde −50, 20. çözümde −100 (tabanın altına inmez).
+ */
+export function dynamicPoints(initial, solves, opts = {}) {
+  const { points, decaySolves, decayDrop, minPoints } = resolveDecay(
+    initial,
+    opts
+  );
+  const n = Math.max(0, Number(solves) || 0);
+  if (n <= 0) return points;
+  const dropped = (decayDrop / decaySolves) * n;
+  return Math.max(minPoints, Math.ceil(points - dropped));
 }
 
 export function getLevel(score) {
