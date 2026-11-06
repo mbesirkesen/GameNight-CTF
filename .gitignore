@@ -3,6 +3,7 @@ dist
 .DS_Store
 .env
 backend/data
+backend/uploads
 *.sqlite
 *.sqlite-*
 frontend/node_modules
