@@ -758,7 +758,7 @@ app.post("/api/admin/takeover", authAdmin, (req, res) => {
       title: "REDBULL BY HACKED",
       subtitle: "",
       imageUrl: "",
-      videoUrl: "/redbull-hacked.mp4",
+      videoUrl: "/redbull-finale.mp4", // frontend bunu zorla kullanır; stale path kalmasın
       startedAt: Date.now(),
     });
     let event = getEvent();

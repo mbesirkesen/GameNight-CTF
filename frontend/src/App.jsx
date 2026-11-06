@@ -40,6 +40,7 @@ import {
   submitRemoteFlag,
 } from "./api.js";
 import { connectRealtime, playTone } from "./realtime.js";
+import MatrixIntro from "./MatrixIntro.jsx";
 
 const ICON_MAP = {
   Search,
@@ -2139,43 +2140,69 @@ function tryTakeoverFullscreen() {
 }
 
 function SponsorTakeover({ takeover, onPhase }) {
-  const title = takeover.title || "REDBULL BY HACKED";
-  const videoUrl = takeover.videoUrl || "/redbull-hacked.mp4";
+  // Eski/kayıtlı videoUrl'leri yoksay — hep güncel finale
+  const videoUrl = "/redbull-finale.mp4";
   const [phase, setPhase] = useState("infect"); // infect | corrupt | blackout | reveal
   const [lineCount, setLineCount] = useState(1);
   const [glitchKick, setGlitchKick] = useState(0);
   const [escapeCaught, setEscapeCaught] = useState(false);
+  const [showFinaleVideo, setShowFinaleVideo] = useState(false);
+  const videoRef = useRef(null);
   const onPhaseRef = useRef(onPhase);
   const phaseRef = useRef(phase);
   const introDoneRef = useRef(false);
   onPhaseRef.current = onPhase;
   phaseRef.current = phase;
 
-  // Sıra sabit: hack hissi → blackout → REDBULL + video (asla tersine atlama)
+  // Sıra: hack → blackout → yazılar → tam ekran video (başlık yok)
   useEffect(() => {
     introDoneRef.current = false;
     setPhase("infect");
     setLineCount(1);
     setEscapeCaught(false);
+    setShowFinaleVideo(false);
     onPhaseRef.current?.("infect");
     const timers = [
       setTimeout(() => {
         setPhase("corrupt");
         onPhaseRef.current?.("corrupt");
-      }, 3200),
+      }, 2800),
       setTimeout(() => {
         setPhase("blackout");
         onPhaseRef.current?.("blackout");
-      }, 6500),
+      }, 5200),
       setTimeout(() => {
         introDoneRef.current = true;
         setPhase("reveal");
         onPhaseRef.current?.("reveal");
         playTone("warn");
-      }, 7400),
+      }, 6000),
     ];
     return () => timers.forEach(clearTimeout);
   }, [takeover?.startedAt, takeover?.active]);
+
+  const handleIntroDone = () => {
+    setShowFinaleVideo(true);
+    playTone("warn");
+  };
+
+  useEffect(() => {
+    if (!showFinaleVideo) return undefined;
+    const el = videoRef.current;
+    if (!el) return undefined;
+    el.muted = true;
+    const tryPlay = () => {
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+    el.addEventListener("loadeddata", tryPlay);
+    el.addEventListener("canplay", tryPlay);
+    tryPlay();
+    return () => {
+      el.removeEventListener("loadeddata", tryPlay);
+      el.removeEventListener("canplay", tryPlay);
+    };
+  }, [showFinaleVideo, videoUrl, takeover?.startedAt]);
 
   // Sekme/pencere kaçışı, kapatma, kısayol ve fullscreen kilidi
   useEffect(() => {
@@ -2379,48 +2406,26 @@ function SponsorTakeover({ takeover, onPhase }) {
 
       {revealed && (
         <>
-          <div className="takeover-backdrop absolute inset-0" />
-          <div className="takeover-grid pointer-events-none absolute inset-0" />
-          <div className="takeover-rain pointer-events-none absolute inset-0" aria-hidden>
-            {Array.from({ length: 18 }, (_, i) => (
-              <span
-                key={i}
-                className="takeover-rain-col"
-                style={{
-                  left: `${(i / 18) * 100}%`,
-                  animationDelay: `${-((i * 0.7) % 8)}s`,
-                  animationDuration: `${9 + (i % 5) * 1.4}s`,
-                  opacity: 0.12 + (i % 4) * 0.04,
-                }}
-              >
-                {"01CTF<>/\\|HACK ".repeat(8)}
-              </span>
-            ))}
-          </div>
-          <div className="takeover-scan pointer-events-none absolute inset-x-0 top-0" />
-          <div className="takeover-vignette pointer-events-none absolute inset-0" />
-
-          <div className="relative z-10 flex min-h-full flex-col items-center justify-center px-4 py-8 sm:px-8">
-            <h1 className="takeover-title takeover-title-slam mb-6 text-center text-3xl leading-[0.95] sm:mb-8 sm:text-5xl lg:text-6xl">
-              {title}
-            </h1>
-            <div className="takeover-stage relative w-full max-w-4xl">
-              <div className="takeover-stage-glow" />
-              <div className="takeover-frame relative overflow-hidden">
-                <video
-                  key={`${videoUrl}-${takeover?.startedAt || "v"}`}
-                  className="takeover-img relative z-10 mx-auto max-h-[70vh] w-full object-contain bg-black"
-                  src={videoUrl}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  controls={false}
-                  preload="auto"
-                />
-              </div>
-            </div>
-          </div>
+          {!showFinaleVideo && (
+            <MatrixIntro
+              key={takeover?.startedAt || "intro"}
+              onDone={handleIntroDone}
+            />
+          )}
+          {showFinaleVideo && (
+            <video
+              ref={videoRef}
+              key={`${videoUrl}-${takeover?.startedAt || "v"}`}
+              className="absolute inset-0 z-[15] h-full w-full object-cover bg-black"
+              src={videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls={false}
+              preload="auto"
+            />
+          )}
         </>
       )}
     </div>
